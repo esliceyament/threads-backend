@@ -12,11 +12,13 @@
         <module name="search-service" />
         <module name="media-service" />
         <module name="api-gateway" />
+        <module name="user-service" />
         <module name="common-library" />
         <module name="admin-service" />
         <module name="notification-service" />
+        <module name="service-discovery" />
       </profile>
-      <profile name="Annotation profile for e-commerce" enabled="true">
+      <profile name="Annotation profile for threads-backend" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -24,7 +26,6 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
         </processorPath>
         <module name="post-service" />
-        <module name="user-service" />
       </profile>
     </annotationProcessing>
   </component>
@@ -33,12 +34,13 @@
       <module name="admin-service" options="-parameters" />
       <module name="api-gateway" options="-parameters" />
       <module name="auth-service" options="-parameters" />
-      <module name="common-library" options="-parameters" />
+      <module name="common-library" options="" />
       <module name="feed-service" options="-parameters" />
       <module name="media-service" options="-parameters" />
       <module name="notification-service" options="-parameters" />
       <module name="post-service" options="-parameters" />
       <module name="search-service" options="-parameters" />
+      <module name="service-discovery" options="-parameters" />
       <module name="user-service" options="-parameters" />
     </option>
   </component>

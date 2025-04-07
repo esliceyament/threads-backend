@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: auth-security
+          uri: lb://AUTH-SERVICE
+          predicates:
+            - Path=/authentication/**
+
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/profile/**, /follow/**, /block/**
+
+my:
+  secret:
+    key: bGVkZHV0eWJlbGx1bnVzdWFsbWluZWFsb3VkZmV3ZXJzbG93dGVsZXZpc2lvbmdlbmU=
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/

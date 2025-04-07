@@ -28,6 +28,12 @@ public class JwtUtil {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    public Long extractId(String token) {
+        Claims claims = extractAllClaims(token);
+        Integer id = claims.get("userId", Integer.class);
+        return (long) id;
+    }
+
     private <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
         final Claims claims = extractAllClaims(token);
         return claimResolver.apply(claims);
@@ -42,16 +48,17 @@ public class JwtUtil {
     }
 
 
-    public String generateToken(String email, String role) {
+    public String generateToken(Long id, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
+        claims.put("userId", id);
 
         return Jwts.builder()
                 .claims()
                 .add(claims)
                 .subject(email)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 60 * 60))
+                .expiration(new Date(System.currentTimeMillis() + 60 * 60 * 30 * 30))
                 .and()
                 .signWith(getSigningKey())
                 .compact();
@@ -72,3 +79,6 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
+
+
+

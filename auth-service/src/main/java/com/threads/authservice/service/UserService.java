@@ -1,5 +1,6 @@
 package com.threads.authservice.service;
 
+import com.threads.UserCreatedEvent;
 import com.threads.authservice.dto.UserDto;
 import com.threads.authservice.dto.UserLoginDto;
 import com.threads.authservice.entity.User;
@@ -7,6 +8,7 @@ import com.threads.authservice.enums.Role;
 import com.threads.authservice.exception.AlreadyExistsException;
 import com.threads.authservice.exception.InvalidCredentialsException;
 import com.threads.authservice.exception.NotFoundException;
+import com.threads.authservice.kafka.UserCreateProducer;
 import com.threads.authservice.mapper.UserMapper;
 import com.threads.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class UserService {
     private final UserMapper mapper;
     private final AuthenticationManager authManager;
     private final JwtUtil jwtService;
+    private final UserCreateProducer producer;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     public UserDto register(UserDto dto) {
@@ -34,6 +37,8 @@ public class UserService {
         user.setPassword(encoder.encode(dto.getPassword()));
         user.setRole(Role.USER);
         repository.save(user);
+        UserCreatedEvent userCreatedEvent = new UserCreatedEvent(user.getId(), "User" + user.getId());
+        producer.sendUserCreatedEvent(userCreatedEvent);
         return mapper.toDto(user);
     }
 
@@ -44,7 +49,7 @@ public class UserService {
             );
             User user = repository.findByEmail(dto.getEmail())
                     .orElseThrow(() -> new NotFoundException("This user not found!"));
-            return jwtService.generateToken(dto.getEmail(), user.getRole().toString());
+            return jwtService.generateToken(user.getId(), dto.getEmail(), user.getRole().toString());
         } catch (BadCredentialsException e) {
             throw new InvalidCredentialsException("Invalid username or password!");
         }
