@@ -3,12 +3,10 @@ package com.threads.userservice.service;
 import com.threads.UserCreatedEvent;
 import com.threads.userservice.dto.UserProfileDto;
 import com.threads.userservice.entity.UserProfile;
-import com.threads.userservice.exception.AccessDeniedException;
 import com.threads.userservice.exception.AlreadyExistsException;
 import com.threads.userservice.exception.NotFoundException;
 import com.threads.userservice.feign.SecurityFeignClient;
 import com.threads.userservice.mapper.UserProfileMapper;
-import com.threads.userservice.repository.BlockRepository;
 import com.threads.userservice.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,9 +47,8 @@ public class UserProfileService {
     public UserProfileDto getProfile(Long id, String authorizationHeader) {
         UserProfile user = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User " + id + " not found!"));
-        if (!accessGuard.checkAccessToProfile(authorizationHeader, id)) {
-            throw new AccessDeniedException("You are not allowed to see profile!");
-        }
+        Long currentUserId = getUserId(authorizationHeader);
+        accessGuard.checkAccessToProfile(currentUserId, id);
         return mapper.toDto(user);
     }
 

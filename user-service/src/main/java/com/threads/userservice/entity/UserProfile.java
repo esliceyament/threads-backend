@@ -37,4 +37,6 @@ public class UserProfile {
     private Set<Block> blockedBy = new HashSet<>();
 
     private Boolean isPrivate;
+
+    private Long pinnedPostId;
 }

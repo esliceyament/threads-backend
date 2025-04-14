@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="auth-service" />
+        <module name="post-service" />
         <module name="feed-service" />
         <module name="search-service" />
         <module name="media-service" />
@@ -17,15 +18,6 @@
         <module name="admin-service" />
         <module name="notification-service" />
         <module name="service-discovery" />
-      </profile>
-      <profile name="Annotation profile for threads-backend" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
-        </processorPath>
-        <module name="post-service" />
       </profile>
     </annotationProcessing>
   </component>

@@ -63,24 +63,16 @@ public class FollowService {
     }
 
     public List<UserProfileDto> getFollowers(Long id, String authorizationHeader) {
-        if (!userRepository.existsById(id)) {
-            throw new NotFoundException("No such user!");
-        }
-        if (!accessGuard.checkAccessToProfile(authorizationHeader, id)) {
-            throw new AccessDeniedException("You are not allowed to see profile!");
-        }
+        Long currentUserId = getUserId(authorizationHeader);
+        accessGuard.checkAccessToProfile(currentUserId, id);
         return followRepository.findByFollowingId(id)
                 .stream()
                 .map(Follow::getFollower)
                 .map(mapper::toDto).toList();
     }
     public List<UserProfileDto> getFollowings(Long id, String authorizationHeader) {
-        if (!userRepository.existsById(id)) {
-            throw new NotFoundException("No such user!");
-        }
-        if (!accessGuard.checkAccessToProfile(authorizationHeader, id)) {
-            throw new AccessDeniedException("You are not allowed to see profile!");
-        }
+        Long currentUserId = getUserId(authorizationHeader);
+        accessGuard.checkAccessToProfile(currentUserId, id);
         return followRepository.findByFollowerId(id)
                 .stream()
                 .map(Follow::getFollowing)

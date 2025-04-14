@@ -17,6 +17,11 @@ spring:
           predicates:
             - Path=/profile/**, /follow/**, /block/**
 
+        - id: post-service
+          uri: lb://POST-SERVICE
+          predicates:
+            - Path=/posts/**
+
 my:
   secret:
     key: bGVkZHV0eWJlbGx1bnVzdWFsbWluZWFsb3VkZmV3ZXJzbG93dGVsZXZpc2lvbmdlbmU=

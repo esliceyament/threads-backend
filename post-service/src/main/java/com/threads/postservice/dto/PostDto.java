@@ -1,38 +1,28 @@
-package com.threads.postservice.entity;
+package com.threads.postservice.dto;
 
+import com.threads.postservice.entity.PostMedia;
 import com.threads.postservice.enums.ReplyPermission;
-import jakarta.persistence.*;
-import lombok.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Post {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Data
+public class PostDto {
     private Long id;
 
     private Long authorId;
     private String content;
     private String topic;
 
-    private Boolean isPost;
-    private Boolean isReply;
+    private boolean isPost;
+    private boolean isReply;
 
     private Long originalPostId;
     private Long replyToPostId;
 
-    private Long pinnedReplyId;
-
     private Boolean hidden;
 
-    @Enumerated(EnumType.STRING)
     private ReplyPermission replyPermission;
 
     private int likeCount;
@@ -43,7 +33,5 @@ public class Post {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToMany(fetch = FetchType.LAZY)
-    @JoinColumn(name = "postId", referencedColumnName = "id")
     private List<PostMedia> media;
 }
