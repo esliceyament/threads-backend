@@ -35,6 +35,8 @@ public class PostServiceImpl implements PostService {
     private final PostAccessGuard accessGuard;
     private final PinnedPostProducer producer;
 ///////////////////////////////media
+///////////////////////////////belke gethidden yoxladigim yerde prosto findorthrow ispolzovat
+///////////////////////////////dobavit isPinnedPost i pri udalenii ili arxivacii udalyat, takje pri udalenii ili arxivacii replaya pinnedreplyId udalit
 
     public PostDto createPost(PostRequest request, String authorizationHeader) {
         Post post = mapper.toEntity(request);
@@ -49,7 +51,7 @@ public class PostServiceImpl implements PostService {
     public PostDto replyToPost(ReplyRequest request, Long postId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
-        accessGuard.checkPostVisible(post, "");
+        accessGuard.checkPostVisible(post);
         accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
         if (post.getReplyPermission().equals(ReplyPermission.FOLLOWERS_ONLY)) {
             accessGuard.checkFollower(currentUserId, post.getAuthorId());
@@ -76,6 +78,9 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(id, currentUserId);
         accessGuard.checkOwnership(post, currentUserId);
+        if (!post.getIsPost()) {
+            throw new IllegalArgumentException("Please provide a post!");
+        }
         mapper.updatePost(postDto, post);
         post.setUpdatedAt(LocalDateTime.now());
         return mapper.toDto(post);
@@ -85,9 +90,9 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(id, currentUserId);
         accessGuard.checkOwnership(reply, currentUserId);
-        accessGuard.checkPostVisible(reply, "");
+        accessGuard.checkPostVisible(reply);
         if (!reply.getIsReply()) {
-            throw new RuntimeException("");
+            throw new IllegalArgumentException("Please provide a reply!");
         }
         mapper.updateReply(dto, reply);
         reply.setUpdatedAt(LocalDateTime.now());
@@ -119,7 +124,7 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post originalPost = findPostOrThrow(id, currentUserId);
         accessGuard.checkUserAccessToPost(currentUserId, originalPost.getAuthorId());
-        accessGuard.checkPostVisible(originalPost, "");
+        accessGuard.checkPostVisible(originalPost);
         Post quote = new Post();
         quote.setAuthorId(currentUserId);
         quote.setContent(quotePostRequest.getContent());
@@ -183,9 +188,9 @@ public class PostServiceImpl implements PostService {
         postRepository.deleteAll(replies);
     }
 
-    private void deleteReply(Post post, Long currentUserId) { ////ne mojet udalit esli reply ili post hidden
+    private void deleteReply(Post post, Long currentUserId) {
         Post originalPost = postRepository.findById(post.getOriginalPostId())
-                .orElseThrow(() -> new RuntimeException(""));
+                .orElseThrow(() -> new NotFoundException("Post " + post.getOriginalPostId() + " not found!"));
 
         accessGuard.checkOwnership(post, currentUserId);
         accessGuard.checkOwnership(originalPost, currentUserId);
@@ -199,7 +204,7 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(id, currentUserId);
 
-        accessGuard.checkPostVisible(post, "");
+        accessGuard.checkPostVisible(post);
         if (post.getIsPost()) {
             archiveOriginalPost(post, currentUserId);
         } else {
@@ -213,9 +218,7 @@ public class PostServiceImpl implements PostService {
 
     private void archiveOriginalPost(Post post, Long currentUserId) {
         accessGuard.checkOwnership(post, currentUserId);
-        if (post.getHidden()) {
-            throw new IllegalStateException("Cannot find post " + post.getId());
-        }
+        accessGuard.checkPostVisible(post);
         List<Post> replies = postRepository.findByOriginalPostId(post.getId());
         replies.forEach(reply -> reply.setHidden(true));
         postRepository.saveAll(replies);
@@ -223,15 +226,17 @@ public class PostServiceImpl implements PostService {
         postRepository.save(post);
     }
 
-    private void archiveReply(Post post, Long currentUserId) {
-        Post originalPost = findPostOrThrow(post.getOriginalPostId(), currentUserId);
+    private void archiveReply(Post reply, Long currentUserId) {
+        Post originalPost = findPostOrThrow(reply.getOriginalPostId(), currentUserId);
         accessGuard.checkOwnership(originalPost, currentUserId);
-        if (post.getHidden()) {
-            throw new IllegalStateException("Cannot find post " + post.getId());
-        }
-        post.setHidden(true);
+        accessGuard.checkPostVisible(reply);
+        accessGuard.checkPostVisible(originalPost);
+        reply.setHidden(true);
         originalPost.setReplyCount(originalPost.getReplyCount() - 1);
-        postRepository.save(post);
+        if (!(reply.getPinnedReplyId() == null)) {
+            reply.setPinnedReplyId(null);
+        }
+        postRepository.save(reply);
         postRepository.save(originalPost);
     }
 
@@ -262,9 +267,10 @@ public class PostServiceImpl implements PostService {
         post.setHidden(false);
     }
 
-    private void unarchiveReply(Post reply, Long currentUserId) { ///hidden sohbetiin
+    private void unarchiveReply(Post reply, Long currentUserId) {
         Post originalPost = postRepository.findById(reply.getOriginalPostId()).get();
         accessGuard.checkOwnership(originalPost, currentUserId);
+        accessGuard.checkPostVisible(originalPost);
         if (!reply.getHidden()) {
             throw new IllegalStateException("Reply " + reply.getId() +" is not archived!");
         }
@@ -274,11 +280,12 @@ public class PostServiceImpl implements PostService {
     public void pinReply(Long replyId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(replyId, currentUserId);
-        if (reply.getIsPost()) {
-            throw new RuntimeException("");
+        if (!reply.getIsReply()) {
+            throw new IllegalArgumentException("Please provide a reply!");
         }
         Post originalPost = postRepository.findById(reply.getOriginalPostId()).get();
         accessGuard.checkOwnership(originalPost, currentUserId);
+        accessGuard.checkPostVisible(originalPost);
         if (originalPost.getPinnedReplyId().equals(replyId)) {
             return;
         }
@@ -286,15 +293,16 @@ public class PostServiceImpl implements PostService {
         postRepository.save(originalPost);
     }
 
-    public void unpinReply(Long replyId, String authorizationHeader) { ////burda da hidden yoxlamaq
+    public void unpinReply(Long replyId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(replyId, currentUserId);
-        if (reply.getIsPost()) {
-            throw new RuntimeException("");
+        if (!reply.getIsReply()) {
+            throw new IllegalArgumentException("Please provide a reply!");
         }
         Post originalPost = postRepository.findById(reply.getOriginalPostId())
-                .orElseThrow(() -> new RuntimeException(""));
+                .orElseThrow(() -> new NotFoundException("Post " + reply.getOriginalPostId() + " not found!"));
         accessGuard.checkOwnership(originalPost, currentUserId);
+        accessGuard.checkPostVisible(originalPost);
         if (!originalPost.getPinnedReplyId().equals(replyId)) {
             throw new RuntimeException("");
         }
@@ -306,10 +314,10 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
         if (!post.getIsPost()) {
-            throw new RuntimeException("");
+            throw new IllegalArgumentException("Please provide a post!");
         }
         accessGuard.checkOwnership(post, currentUserId);
-        accessGuard.checkPostVisible(post, "");
+        accessGuard.checkPostVisible(post);
         PinPostEvent pinPostEvent = new PinPostEvent(currentUserId, postId);
         producer.sendPinPostEvent(pinPostEvent);
     }
@@ -318,7 +326,7 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
         if (!post.getIsPost()) {
-            throw new RuntimeException("");
+            throw new IllegalArgumentException("Please provide a post!");
         }
         accessGuard.checkOwnership(post, currentUserId);
         PinPostEvent pinPostEvent = new PinPostEvent(currentUserId, null);

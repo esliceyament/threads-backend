@@ -2,6 +2,7 @@ package com.threads.postservice.exception.handler;
 
 import com.threads.postservice.dto.ExceptionDto;
 import com.threads.postservice.exception.NotFoundException;
+import com.threads.postservice.exception.OwnershipException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -14,6 +15,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ExceptionDto notFoundHandler(NotFoundException notFoundException) {
         return new ExceptionDto(HttpStatus.NOT_FOUND.value(), notFoundException.getMessage());
+    }
+
+    @ExceptionHandler(OwnershipException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ExceptionDto ownershipHandler(OwnershipException ownershipException) {
+        return new ExceptionDto(HttpStatus.FORBIDDEN.value(), ownershipException.getMessage());
     }
 
 

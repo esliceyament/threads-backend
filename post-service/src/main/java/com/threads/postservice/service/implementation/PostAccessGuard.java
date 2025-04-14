@@ -1,6 +1,7 @@
 package com.threads.postservice.service.implementation;
 
 import com.threads.postservice.entity.Post;
+import com.threads.postservice.exception.OwnershipException;
 import com.threads.postservice.feign.UserFeignClient;
 import com.threads.request.AccessRequest;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +18,13 @@ public class PostAccessGuard {
 
     public void checkOwnership(Post post, Long currentUserId) {
         if (!post.getAuthorId().equals(currentUserId)) {
-            throw new RuntimeException("");
+            throw new OwnershipException("You don't have access!");
         }
     }
 
-    public void checkPostVisible(Post post, String message) {
+    public void checkPostVisible(Post post) {
         if (post.getHidden()) {
-            throw new RuntimeException(message);
+            throw new IllegalStateException("Cannot find post " + post.getId());
         }
     }
 
