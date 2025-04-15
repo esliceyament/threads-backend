@@ -15,6 +15,8 @@ public class PostResponse {
     private Long originalPostId;
     private Long replyToPostId;
 
+    private Long pinnedReplyId;
+
     private int likeCount;
     private int repostCount;
     private int replyCount;

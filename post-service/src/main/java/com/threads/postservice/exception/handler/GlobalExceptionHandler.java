@@ -1,7 +1,9 @@
 package com.threads.postservice.exception.handler;
 
 import com.threads.postservice.dto.ExceptionDto;
+import com.threads.postservice.exception.AlreadyRepostedException;
 import com.threads.postservice.exception.NotFoundException;
+import com.threads.postservice.exception.NotPinnedReplyException;
 import com.threads.postservice.exception.OwnershipException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,5 +25,16 @@ public class GlobalExceptionHandler {
         return new ExceptionDto(HttpStatus.FORBIDDEN.value(), ownershipException.getMessage());
     }
 
+    @ExceptionHandler(NotPinnedReplyException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ExceptionDto notPinnedReplyHandler(NotPinnedReplyException notPinnedReplyException) {
+        return new ExceptionDto(HttpStatus.CONTINUE.value(), notPinnedReplyException.getMessage());
+    }
+
+    @ExceptionHandler(AlreadyRepostedException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ExceptionDto alreadyRepostedException(AlreadyRepostedException alreadyRepostedException) {
+        return new ExceptionDto(HttpStatus.BAD_REQUEST.value(), alreadyRepostedException.getMessage());
+    }
 
 }

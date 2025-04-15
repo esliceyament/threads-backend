@@ -32,7 +32,7 @@ public class AccessGuard {
         }
 
     public void checkFollower(Long currentUserId, Long ownerId) {
-        if (followRepository.existsByFollowerIdAndFollowingId(currentUserId, ownerId)) {
+        if (!followRepository.existsByFollowerIdAndFollowingId(currentUserId, ownerId)) {
             throw new AccessDeniedException("You don't follow this person!");
         }
     }

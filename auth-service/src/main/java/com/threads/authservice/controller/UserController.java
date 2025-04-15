@@ -4,6 +4,7 @@ import com.threads.authservice.dto.UserDto;
 import com.threads.authservice.dto.UserLoginDto;
 import com.threads.authservice.service.JwtUtil;
 import com.threads.authservice.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +17,7 @@ public class UserController {
     private final JwtUtil jwtService;
 
     @PostMapping("/register")
-    public ResponseEntity<UserDto> register(@RequestBody UserDto dto) {
+    public ResponseEntity<UserDto> register(@Valid @RequestBody UserDto dto) {
         return ResponseEntity.ok(service.register(dto));
     }
 

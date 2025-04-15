@@ -11,6 +11,6 @@ public class PinnedPostProducer {
     private final KafkaTemplate<String, PinPostEvent> kafkaTemplate;
 
     public void sendPinPostEvent(PinPostEvent pinPostEvent) {
-        kafkaTemplate.send("post-events", pinPostEvent);
+        kafkaTemplate.send("user-post-events", pinPostEvent);
     }
 }

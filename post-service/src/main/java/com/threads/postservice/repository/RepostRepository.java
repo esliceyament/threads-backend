@@ -12,4 +12,5 @@ public interface RepostRepository extends JpaRepository<Repost, Long> {
     List<Repost> findByUserIdAndHiddenFalse(Long userId);
     void deleteByPostId(Long postId);
     List<Repost> findByPostId(Long postId);
+    Optional<Repost> findByIdAndHiddenFalse(Long id);
 }

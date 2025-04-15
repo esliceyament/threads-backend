@@ -21,6 +21,8 @@ public class PostDto {
     private Long originalPostId;
     private Long replyToPostId;
 
+    private Long pinnedReplyId;
+
     private Boolean hidden;
 
     private ReplyPermission replyPermission;

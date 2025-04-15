@@ -13,13 +13,15 @@ public class PostAccessGuard {
     private final UserFeignClient userFeignClient;
     ////can like
     ////can reply
-    ////can repost
     ////can quote
 
     public void checkOwnership(Post post, Long currentUserId) {
         if (!post.getAuthorId().equals(currentUserId)) {
             throw new OwnershipException("You don't have access!");
         }
+    }
+    public boolean checkOwnershipToDelete(Post post, Long currentUserId) {
+        return post.getAuthorId().equals(currentUserId);
     }
 
     public void checkPostVisible(Post post) {

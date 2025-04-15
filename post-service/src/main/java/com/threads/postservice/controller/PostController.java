@@ -82,7 +82,7 @@ public class PostController {
     }
 
     @GetMapping("/get-replies")
-    public ResponseEntity<List<PostResponse>> getMyReplies(String authorizationHeader) {
+    public ResponseEntity<List<PostResponse>> getMyReplies(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
         return ResponseEntity.ok(postService.getMyReplies(authorizationHeader));
     }
 
