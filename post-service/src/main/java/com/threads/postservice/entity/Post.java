@@ -39,6 +39,7 @@ public class Post {
     private int repostCount;
     private int replyCount;
     private int sendCount;
+    private int reportCount;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

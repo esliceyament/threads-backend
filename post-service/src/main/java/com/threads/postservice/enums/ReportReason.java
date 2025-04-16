@@ -4,5 +4,7 @@ public enum ReportReason {
     SPAM,
     HARASSMENT,
     INAPPROPRIATE,
+    VIOLENCE,
+    MISINFORMATION,
     OTHER
 }

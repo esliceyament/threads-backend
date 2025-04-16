@@ -8,7 +8,6 @@ import com.threads.postservice.entity.Post;
 import com.threads.postservice.entity.Repost;
 import com.threads.postservice.enums.ReplyPermission;
 import com.threads.postservice.exception.NotFoundException;
-import com.threads.postservice.exception.NotPinnedReplyException;
 import com.threads.postservice.exception.OwnershipException;
 import com.threads.postservice.feign.SecurityFeignClient;
 import com.threads.postservice.kafka.PinnedPostProducer;
@@ -16,8 +15,10 @@ import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.payload.PostRequest;
 import com.threads.postservice.payload.QuotePostRequest;
 import com.threads.postservice.payload.ReplyRequest;
+import com.threads.postservice.repository.LikeRepository;
 import com.threads.postservice.repository.PostRepository;
 import com.threads.postservice.repository.RepostRepository;
+import com.threads.postservice.repository.SaveRepository;
 import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.PostService;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +37,11 @@ public class PostServiceImpl implements PostService {
     private final RepostRepository repostRepository;
     private final PostAccessGuard accessGuard;
     private final PinnedPostProducer producer;
+    private final LikeRepository likeRepository;
+    private final SaveRepository saveRepository;
 ///////////////////////////////media
 
+    @Override
     public PostDto createPost(PostRequest request, String authorizationHeader) {
         Post post = mapper.toEntity(request);
         post.setAuthorId(getUserId(authorizationHeader));
@@ -49,6 +53,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toDto(post);
     }
 
+    @Override
     public PostDto replyToPost(ReplyRequest request, Long postId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
@@ -76,6 +81,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toDtoReply(reply);
     }
 
+    @Override
     public PostDto updatePost(PostUpdateDto postDto, Long id, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(id, currentUserId);
@@ -89,6 +95,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toDto(post);
     }
 
+    @Override
     public PostDto updateReply(ReplyUpdateDto dto, Long id, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(id, currentUserId);
@@ -103,6 +110,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toDto(reply);
     }
 
+    @Override
     public PostResponse getPost(Long id, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(id, currentUserId);
@@ -110,6 +118,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toResponse(post);
     }
 
+    @Override
     public List<PostResponse> getRepliesOfPost(Long postId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
@@ -124,6 +133,7 @@ public class PostServiceImpl implements PostService {
                 .map(mapper::toResponse).toList();
     }
 
+    @Override
     public PostResponse quotePost(Long id, QuotePostRequest quotePostRequest, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post originalPost = findPostOrThrow(id, currentUserId);
@@ -143,6 +153,7 @@ public class PostServiceImpl implements PostService {
         return mapper.toResponse(quote);
     }
 
+    @Override
     public List<PostResponse> getUserPosts(Long authorId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         accessGuard.checkUserAccessToPost(currentUserId, authorId);
@@ -151,6 +162,7 @@ public class PostServiceImpl implements PostService {
                 .map(mapper::toResponse).toList();
     }
 
+    @Override
     public List<PostResponse> getUserReplies(Long authorId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         accessGuard.checkUserAccessToPost(currentUserId, authorId);
@@ -159,17 +171,21 @@ public class PostServiceImpl implements PostService {
                 .map(mapper::toResponse).toList();
     }
 
+    @Override
     public List<PostResponse> getMyPosts(String authorizationHeader) {
         return postRepository.findByAuthorIdAndIsPostTrueAndHiddenFalse(getUserId(authorizationHeader))
                 .stream()
                 .map(mapper::toResponse).toList();
     }
+
+    @Override
     public List<PostResponse> getMyReplies(String authorizationHeader) {
         return postRepository.findByAuthorIdAndIsReplyTrueAndHiddenFalse(getUserId(authorizationHeader))
                 .stream()
                 .map(mapper::toResponse).toList();
     }
 
+    @Override
     @Transactional
     public void deletePost(Long id, String authorizationHeader) {
         Post post = postRepository.findById(id)
@@ -181,22 +197,21 @@ public class PostServiceImpl implements PostService {
         } else {
             deleteOriginalPost(post, currentUserId);
         }
-        repostRepository.deleteByPostId(post.getId());
+    }
 
+    protected void deleteOriginalPost(Post post, Long currentUserId) {
+        accessGuard.checkOwnership(post, currentUserId);
+        repostRepository.deleteByPostId(post.getId());
+        likeRepository.deleteByPostId(post.getId());
+        saveRepository.deleteByPostId(post.getId());
         postRepository.delete(post);
     }
 
-    private void deleteOriginalPost(Post post, Long currentUserId) {
-        accessGuard.checkOwnership(post, currentUserId);
-        List<Post> replies = postRepository.findByOriginalPostId(post.getId());
-        postRepository.deleteAll(replies);
-    }
-
-    private void deleteReply(Post reply, Long currentUserId) {
+    protected void deleteReply(Post reply, Long currentUserId) {
         Post originalPost = postRepository.findById(reply.getOriginalPostId())
                 .orElseThrow(() -> new NotFoundException("Post " + reply.getOriginalPostId() + " not found!"));
 
-        if (!accessGuard.checkOwnershipToDelete(originalPost, currentUserId) && !accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
+        if (accessGuard.checkOwnershipToDelete(originalPost, currentUserId) && accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
             throw new OwnershipException("You don't have access!");
         }
         if (!reply.getHidden()) {
@@ -206,8 +221,13 @@ public class PostServiceImpl implements PostService {
             originalPost.setPinnedReplyId(null);
         }
         postRepository.save(originalPost);
+        repostRepository.deleteByPostId(reply.getId());
+        likeRepository.deleteByPostId(reply.getId());
+        saveRepository.deleteByPostId(reply.getId());
+        postRepository.delete(reply);
     }
 
+    @Override
     public void archivePost(Long id, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(id, currentUserId);
@@ -224,7 +244,7 @@ public class PostServiceImpl implements PostService {
         repostRepository.saveAll(reposts);
     }
 
-    private void archiveOriginalPost(Post post, Long currentUserId) {
+    private void archiveOriginalPost(Post post, Long currentUserId) { //proverit archive uje archived
         accessGuard.checkOwnership(post, currentUserId);
         List<Post> replies = postRepository.findByOriginalPostId(post.getId());
         replies.forEach(reply -> reply.setHidden(true));
@@ -249,6 +269,7 @@ public class PostServiceImpl implements PostService {
         postRepository.save(originalPost);
     }
 
+    @Override
     public List<PostResponse> getArchivedPosts(String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         return postRepository.findByAuthorIdAndIsPostTrueAndHiddenTrue(currentUserId)
@@ -256,6 +277,7 @@ public class PostServiceImpl implements PostService {
                 .map(mapper::toResponse).toList();
     }
 
+    @Override
     public void unarchivePost(Long id, String authorizationHeader) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Post " + id + " not found!"));
@@ -271,7 +293,7 @@ public class PostServiceImpl implements PostService {
     private void unarchiveOriginalPost(Post post, Long currentUserId) {
         accessGuard.checkOwnership(post, currentUserId);
         if (!post.getHidden()) {
-            throw new IllegalStateException("Post " + post.getId() +" is not archived!");
+            return;
         }
         post.setHidden(false);
         List<Post> replies = postRepository.findByOriginalPostId(post.getId());
@@ -284,18 +306,20 @@ public class PostServiceImpl implements PostService {
         accessGuard.checkOwnership(originalPost, currentUserId);
         accessGuard.checkPostVisible(originalPost);
         if (!reply.getHidden()) {
-            throw new IllegalStateException("Reply " + reply.getId() +" is not archived!");
+            return;
         }
         reply.setHidden(false);
     }
 
+    @Override
     public void pinReply(Long replyId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(replyId, currentUserId);
         if (!reply.getIsReply()) {
             throw new IllegalArgumentException("Please provide a reply!");
         }
-        Post originalPost = postRepository.findById(reply.getOriginalPostId()).get();
+        Post originalPost = postRepository.findById(reply.getOriginalPostId())
+                .orElseThrow(() -> new NotFoundException("Post " + reply.getOriginalPostId() + " not found!"));
         accessGuard.checkOwnership(originalPost, currentUserId);
         accessGuard.checkPostVisible(originalPost);
         if (reply.getId().equals(originalPost.getPinnedReplyId())) {
@@ -305,6 +329,7 @@ public class PostServiceImpl implements PostService {
         postRepository.save(originalPost);
     }
 
+    @Override
     public void unpinReply(Long replyId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post reply = findPostOrThrow(replyId, currentUserId);
@@ -316,12 +341,13 @@ public class PostServiceImpl implements PostService {
         accessGuard.checkOwnership(originalPost, currentUserId);
         accessGuard.checkPostVisible(originalPost);
         if (!reply.getId().equals(originalPost.getPinnedReplyId())) {
-            throw new NotPinnedReplyException("This reply cannot be unpinned!");
+            return;
         }
         originalPost.setPinnedReplyId(null);
         postRepository.save(originalPost);
     }
 
+    @Override
     public void pinPost(Long postId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
@@ -334,6 +360,7 @@ public class PostServiceImpl implements PostService {
         producer.sendPinPostEvent(pinPostEvent);
     }
 
+    @Override
     public void unpinPost(Long postId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);

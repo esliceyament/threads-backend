@@ -11,9 +11,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PostAccessGuard {
     private final UserFeignClient userFeignClient;
-    ////can like
-    ////can reply
-    ////can quote
 
     public void checkOwnership(Post post, Long currentUserId) {
         if (!post.getAuthorId().equals(currentUserId)) {
@@ -21,7 +18,7 @@ public class PostAccessGuard {
         }
     }
     public boolean checkOwnershipToDelete(Post post, Long currentUserId) {
-        return post.getAuthorId().equals(currentUserId);
+        return !post.getAuthorId().equals(currentUserId);
     }
 
     public void checkPostVisible(Post post) {

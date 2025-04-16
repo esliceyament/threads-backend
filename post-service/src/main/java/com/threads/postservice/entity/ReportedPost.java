@@ -1,6 +1,7 @@
 package com.threads.postservice.entity;
 
 import com.threads.postservice.enums.ReportReason;
+import com.threads.postservice.enums.ReportStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -10,14 +11,17 @@ import java.time.LocalDateTime;
 @Data
 public class ReportedPost {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long reporterId;
-    private Long reportedPostId;
+    private Long targetId;
 
     @Enumerated(EnumType.STRING)
     private ReportReason reason;
+
+    @Enumerated(EnumType.STRING)
+    private ReportStatus status;
 
     private String additionalInfo;
 
