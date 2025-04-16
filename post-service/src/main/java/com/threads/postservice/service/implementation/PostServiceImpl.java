@@ -39,7 +39,6 @@ public class PostServiceImpl implements PostService {
     private final PinnedPostProducer producer;
     private final LikeRepository likeRepository;
     private final SaveRepository saveRepository;
-///////////////////////////////media
 
     @Override
     public PostDto createPost(PostRequest request, String authorizationHeader) {

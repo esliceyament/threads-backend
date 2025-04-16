@@ -10,10 +10,8 @@ import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,9 +21,8 @@ import java.util.List;
 public class PostController {
     private final PostService postService;
 
-    @PostMapping(value = "/create-post", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping("/create-post")
     public ResponseEntity<PostDto> createPost(@RequestBody PostRequest request,
-                                              @RequestParam(value = "files", required = false) List<MultipartFile> files,
                                               @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
         return ResponseEntity.ok(postService.createPost(request, authorizationHeader));
     }
