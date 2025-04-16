@@ -10,8 +10,10 @@ import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -21,16 +23,18 @@ import java.util.List;
 public class PostController {
     private final PostService postService;
 
-    @PostMapping("/create-post")
-    public ResponseEntity<PostDto> createPost(@RequestBody PostRequest request,
+    @PostMapping(value = "/create-post", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostDto> createPost(@RequestPart("post") PostRequest request,
+                                              @RequestPart(value = "media", required = false) List<MultipartFile> media,
                                               @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
-        return ResponseEntity.ok(postService.createPost(request, authorizationHeader));
+        return ResponseEntity.ok(postService.createPost(request, media, authorizationHeader));
     }
 
-    @PostMapping("/reply/{postId}")
-    public ResponseEntity<PostDto> replyToPost(@RequestBody ReplyRequest request, @PathVariable Long postId,
+    @PostMapping(value = "/reply/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostDto> replyToPost(@RequestPart("reply") ReplyRequest request, @PathVariable Long postId,
+                                               @RequestPart(value = "media", required = false) List<MultipartFile> media,
                                                @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
-        return ResponseEntity.ok(postService.replyToPost(request, postId, authorizationHeader));
+        return ResponseEntity.ok(postService.replyToPost(request, postId, media, authorizationHeader));
     }
 
     @PutMapping("/update-post/{id}")

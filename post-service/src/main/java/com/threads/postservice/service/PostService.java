@@ -3,20 +3,20 @@ package com.threads.postservice.service;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
-import com.threads.postservice.entity.Post;
 import com.threads.postservice.payload.PostRequest;
 import com.threads.postservice.payload.QuotePostRequest;
 import com.threads.postservice.payload.ReplyRequest;
 import com.threads.postservice.response.PostResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @Service
 public interface PostService {
 
-    PostDto createPost(PostRequest request, String authorizationHeader);
-    PostDto replyToPost(ReplyRequest request, Long postId, String authorizationHeader);
+    PostDto createPost(PostRequest request, List<MultipartFile> media, String authorizationHeader);
+    PostDto replyToPost(ReplyRequest request, Long postId, List<MultipartFile> media, String authorizationHeader);
     PostDto updatePost(PostUpdateDto postDto, Long id, String authorizationHeader);
     PostDto updateReply(ReplyUpdateDto dto, Long id, String authorizationHeader);
     PostResponse getPost(Long id, String authorizationHeader);

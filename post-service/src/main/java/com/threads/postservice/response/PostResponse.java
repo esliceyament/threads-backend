@@ -1,6 +1,5 @@
 package com.threads.postservice.response;
 
-import com.threads.postservice.entity.PostMedia;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -24,5 +23,5 @@ public class PostResponse {
 
     private LocalDateTime createdAt;
 
-    private List<PostMedia> media;
+    private List<PostMediaResponse> media;
 }

@@ -15,8 +15,8 @@ public class PostDto {
     private String content;
     private String topic;
 
-    private boolean isPost;
-    private boolean isReply;
+    private Boolean isPost;
+    private Boolean isReply;
 
     private Long originalPostId;
     private Long replyToPostId;

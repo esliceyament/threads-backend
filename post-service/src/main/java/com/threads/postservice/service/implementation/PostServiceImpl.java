@@ -5,7 +5,9 @@ import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
 import com.threads.postservice.entity.Post;
+import com.threads.postservice.entity.PostMedia;
 import com.threads.postservice.entity.Repost;
+import com.threads.postservice.enums.MediaType;
 import com.threads.postservice.enums.ReplyPermission;
 import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.exception.OwnershipException;
@@ -15,18 +17,18 @@ import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.payload.PostRequest;
 import com.threads.postservice.payload.QuotePostRequest;
 import com.threads.postservice.payload.ReplyRequest;
-import com.threads.postservice.repository.LikeRepository;
-import com.threads.postservice.repository.PostRepository;
-import com.threads.postservice.repository.RepostRepository;
-import com.threads.postservice.repository.SaveRepository;
+import com.threads.postservice.repository.*;
 import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,21 +41,28 @@ public class PostServiceImpl implements PostService {
     private final PinnedPostProducer producer;
     private final LikeRepository likeRepository;
     private final SaveRepository saveRepository;
+    private final PostMediaRepository postMediaRepository;
+    private final PostMediaService postMediaService;
 
     @Override
-    public PostDto createPost(PostRequest request, String authorizationHeader) {
+    public PostDto createPost(PostRequest request, List<MultipartFile> media, String authorizationHeader) {
         Post post = mapper.toEntity(request);
         post.setAuthorId(getUserId(authorizationHeader));
         post.setIsPost(true);
         post.setCreatedAt(LocalDateTime.now());
         post.setIsReply(false);
         post.setHidden(false);
+        if (media != null && !media.isEmpty()) {
+            List<PostMedia> mediaList = saveMediaFiles(media, post.getId());
+            postMediaRepository.saveAll(mediaList);
+            post.setMedia(mediaList);
+        }
         postRepository.save(post);
         return mapper.toDto(post);
     }
 
     @Override
-    public PostDto replyToPost(ReplyRequest request, Long postId, String authorizationHeader) {
+    public PostDto replyToPost(ReplyRequest request, Long postId, List<MultipartFile> media, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
         accessGuard.checkPostVisible(post);
@@ -70,11 +79,16 @@ public class PostServiceImpl implements PostService {
         reply.setReplyToPostId(postId);
         reply.setHidden(false);
         reply.setReplyPermission(ReplyPermission.EVERYONE);
+        reply.setCreatedAt(LocalDateTime.now());
         if (post.getReplyToPostId() != null) {
             reply.setOriginalPostId(post.getOriginalPostId());
             reply.setReplyToPostId(post.getId());
         }
-        reply.setCreatedAt(LocalDateTime.now());
+        if (media != null && !media.isEmpty()) {
+            List<PostMedia> mediaList = saveMediaFiles(media, reply.getId());
+            postMediaRepository.saveAll(mediaList);
+            reply.setMedia(mediaList);
+        }
         postRepository.save(reply);
         postRepository.save(post);
         return mapper.toDtoReply(reply);
@@ -203,26 +217,34 @@ public class PostServiceImpl implements PostService {
         repostRepository.deleteByPostId(post.getId());
         likeRepository.deleteByPostId(post.getId());
         saveRepository.deleteByPostId(post.getId());
+        postMediaRepository.deleteByPostId(post.getId());
         postRepository.delete(post);
     }
 
     protected void deleteReply(Post reply, Long currentUserId) {
-        Post originalPost = postRepository.findById(reply.getOriginalPostId())
-                .orElseThrow(() -> new NotFoundException("Post " + reply.getOriginalPostId() + " not found!"));
-
-        if (accessGuard.checkOwnershipToDelete(originalPost, currentUserId) && accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
-            throw new OwnershipException("You don't have access!");
+        Optional<Post> originalPostOpt = postRepository.findById(reply.getOriginalPostId());
+        if (originalPostOpt.isPresent()) {
+            Post originalPost = originalPostOpt.get();
+            if (accessGuard.checkOwnershipToDelete(originalPost, currentUserId) && accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
+                throw new OwnershipException("You don't have access!");
+            }
+            if (!reply.getHidden()) {
+                originalPost.setReplyCount(originalPost.getReplyCount() - 1);
+            }
+            if (reply.getId().equals(originalPost.getPinnedReplyId())) {
+                originalPost.setPinnedReplyId(null);
+            }
+            postRepository.save(originalPost);
         }
-        if (!reply.getHidden()) {
-            originalPost.setReplyCount(originalPost.getReplyCount() - 1);
+        else {
+            if (accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
+                throw new OwnershipException("You don't have access!");
+            }
         }
-        if (reply.getId().equals(originalPost.getPinnedReplyId())) {
-            originalPost.setPinnedReplyId(null);
-        }
-        postRepository.save(originalPost);
         repostRepository.deleteByPostId(reply.getId());
         likeRepository.deleteByPostId(reply.getId());
         saveRepository.deleteByPostId(reply.getId());
+        postMediaRepository.deleteByPostId(reply.getId());
         postRepository.delete(reply);
     }
 
@@ -301,7 +323,8 @@ public class PostServiceImpl implements PostService {
     }
 
     private void unarchiveReply(Post reply, Long currentUserId) {
-        Post originalPost = postRepository.findById(reply.getOriginalPostId()).get();
+        Post originalPost = postRepository.findById(reply.getOriginalPostId())
+                .orElseThrow(() -> new NotFoundException("Post " + reply.getOriginalPostId() + " not found!"));
         accessGuard.checkOwnership(originalPost, currentUserId);
         accessGuard.checkPostVisible(originalPost);
         if (!reply.getHidden()) {
@@ -379,5 +402,20 @@ public class PostServiceImpl implements PostService {
 
     private Long getUserId(String authorizationHeader) {
         return securityFeignClient.getUserId(authorizationHeader);
+    }
+
+    private List<PostMedia> saveMediaFiles(List<MultipartFile> media, Long postId) {
+        List<PostMedia> mediaList = new ArrayList<>();
+        for (MultipartFile file : media) {
+            String fileName = postMediaService.saveFileLocally(file);
+            MediaType type = postMediaService.detectMediaType(file);
+
+            PostMedia postMedia = new PostMedia();
+            postMedia.setPostId(postId);
+            postMedia.setMediaUrl("/media/" + fileName);
+            postMedia.setType(type);
+            mediaList.add(postMedia);
+        }
+        return mediaList;
     }
 }
