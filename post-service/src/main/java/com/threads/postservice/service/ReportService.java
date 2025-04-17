@@ -13,4 +13,5 @@ public interface ReportService {
     void reportPost(Long postId, ReportRequest request, String authorizationHeader);
     void updateStatus(Long reportId, ReportStatus status);
     List<ReportedPost> getReports(ReportStatus status);
+    List<ReportedPost> getReportsOfPost(Long postId);
 }

@@ -7,6 +7,7 @@ import java.util.List;
 
 @Data
 public class PostResponse {
+    private Long id;
     private Long authorId;
     private String content;
     private String topic;

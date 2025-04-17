@@ -11,6 +11,7 @@ import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.SaveService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,7 @@ public class SaveServiceImpl implements SaveService {
     }
 
     @Override
+    @Transactional
     public void unsavePost(Long postId, String authorizationHeader) {
         Post post = postRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
@@ -51,7 +53,8 @@ public class SaveServiceImpl implements SaveService {
         List<SavedPost> savedPosts = saveRepository.findByUserId(currentUserId);
         List<PostResponse> responseList = new ArrayList<>();
         for (SavedPost save : savedPosts) {
-            responseList.add(mapper.toResponse(postRepository.findByIdAndHiddenFalse(save.getPostId()).get()));
+            postRepository.findByIdAndHiddenFalse(save.getPostId())
+                    .ifPresent(post -> responseList.add(mapper.toResponse(post)));
         }
         return responseList;
     }

@@ -3,7 +3,6 @@ package com.threads.postservice.service.implementation;
 import com.threads.postservice.entity.Post;
 import com.threads.postservice.entity.Repost;
 import com.threads.postservice.exception.NotFoundException;
-import com.threads.postservice.exception.OwnershipException;
 import com.threads.postservice.feign.SecurityFeignClient;
 import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.repository.PostRepository;
@@ -12,7 +11,9 @@ import com.threads.postservice.response.RepostResponse;
 import com.threads.postservice.service.RepostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,14 +45,14 @@ public class RepostServiceImpl implements RepostService {
     }
 
     @Override
+    @Transactional
     public void removeRepost(Long repostId, String authorizationHeader) {
         Repost repost = repostRepository.findByIdAndHiddenFalse(repostId)
                 .orElseThrow(() -> new NotFoundException("Repost " + repostId + " not found!"));
         Post originalPost = postRepository.findById(repost.getPostId())
                 .orElseThrow(() -> new NotFoundException("Post " + repost.getPostId() + " not found!"));
-        if (!repost.getUserId().equals(getUserId(authorizationHeader))) {
-            throw new OwnershipException("You are not allowed to remove this repost!");
-        }
+        Long currentUser = getUserId(authorizationHeader);
+        accessGuard.checkOwnership(repost.getUserId(), currentUser);
         originalPost.setRepostCount(originalPost.getRepostCount() - 1);
         postRepository.save(originalPost);
         repostRepository.delete(repost);
@@ -62,13 +63,17 @@ public class RepostServiceImpl implements RepostService {
         Long currentUser = getUserId(authorizationHeader);
         accessGuard.checkUserAccessToPost(currentUser, authorId);
         List<Repost> reposts = repostRepository.findByUserIdAndHiddenFalse(authorId);
-        return reposts.stream().map(repost -> {
-            Post post = postRepository.findById(repost.getPostId()).get();
-            RepostResponse response = new RepostResponse();
-            response.setUserId(authorId);
-            response.setPost(mapper.toResponse(post));
-            return response;
-        }).toList();
+        List<RepostResponse> responseList = new ArrayList<>();
+        for (Repost repost : reposts) {
+            postRepository.findByIdAndHiddenFalse(repost.getPostId())
+                    .ifPresent(post -> {
+                        RepostResponse response = new RepostResponse();
+                        response.setUserId(authorId);
+                        response.setPost(mapper.toResponse(post));
+                        responseList.add(response);
+                    });
+        }
+        return responseList;
     }
 
     @Override

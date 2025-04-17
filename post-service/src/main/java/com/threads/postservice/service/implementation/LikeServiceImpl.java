@@ -10,6 +10,7 @@ import com.threads.postservice.response.LikeResponse;
 import com.threads.postservice.service.LikeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,27 +25,30 @@ public class LikeServiceImpl implements LikeService {
 
     @Override
     public void likePost(Long postId, String authorizationHeader) {
-        Post post = postRepository.findByIdAndHiddenFalse(postId)
-                .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
         Long currentUserId = getUserId(authorizationHeader);
-        accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
         if (likeRepository.existsByUserIdAndPostId(currentUserId, postId)) {
             return;
         }
+        Post post = postRepository.findByIdAndHiddenFalse(postId)
+                .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
+        accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
         post.setLikeCount(post.getLikeCount() + 1);
         likeRepository.save(new Like(currentUserId, postId, LocalDateTime.now()));
         postRepository.save(post);
     }
 
     @Override
+    @Transactional
     public void unlikePost(Long postId, String authorizationHeader) {
-        Post post = postRepository.findByIdAndHiddenFalse(postId)
-                .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
         Long currentUserId = getUserId(authorizationHeader);
-        accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
-        post.setLikeCount(post.getLikeCount() - 1);
-        likeRepository.deleteByUserIdAndPostId(currentUserId, postId);
-        postRepository.save(post);
+        if (likeRepository.existsByUserIdAndPostId(currentUserId, postId)) {
+            Post post = postRepository.findByIdAndHiddenFalse(postId)
+                    .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
+            accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
+            post.setLikeCount(post.getLikeCount() - 1);
+            likeRepository.deleteByUserIdAndPostId(currentUserId, postId);
+            postRepository.save(post);
+        }
     }
 
     @Override

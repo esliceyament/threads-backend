@@ -36,4 +36,14 @@ public class AccessGuard {
             throw new AccessDeniedException("You don't follow this person!");
         }
     }
+
+    public void canSendPost(Long currentUserId, Long ownerId) {
+        if (blockRepository.existsByBlockerIdAndBlockedId(ownerId, currentUserId)) {
+            throw new AccessDeniedException("You are not allowed to see profile!");
+        }
+    }
+
+    public boolean checkUserExists(Long userId) {
+        return userProfileRepository.existsById(userId);
+    }
 }

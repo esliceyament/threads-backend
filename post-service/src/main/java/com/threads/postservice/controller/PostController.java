@@ -138,27 +138,3 @@ public class PostController {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//PostService.sendPostToUser()
-//
-//PostService.getSentPosts()
-//
-//PostService.getReceivedPosts()

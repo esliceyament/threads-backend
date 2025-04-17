@@ -8,13 +8,14 @@ import com.threads.postservice.feign.SecurityFeignClient;
 import com.threads.postservice.payload.ReportRequest;
 import com.threads.postservice.repository.PostRepository;
 import com.threads.postservice.repository.ReportRepository;
-import com.threads.postservice.service.PostService;
 import com.threads.postservice.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,13 +28,23 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public void reportPost(Long postId, ReportRequest request, String authorizationHeader) {
+        Long currentUserId = getUserId(authorizationHeader);
         Post post = postRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new NotFoundException("Post " + postId + " not found!"));
-        Long currentUserId = getUserId(authorizationHeader);
-        if (currentUserId.equals(post.getAuthorId())) {
-            throw new IllegalArgumentException("Cannot report this post!");
-        }
         accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
+        if (currentUserId.equals(post.getAuthorId())) {
+            throw new IllegalArgumentException("Cannot report own post!");
+        }
+        Optional<ReportedPost> reportOpt = reportRepository.findByReporterIdAndTargetId(currentUserId, postId);
+        if (reportOpt.isPresent()) {
+            if (!reportOpt.get().getReason().equals(request.getReason())) {
+                ReportedPost reportedPost = reportOpt.get();
+                reportedPost.setReason(request.getReason());
+                reportedPost.setReportedAt(LocalDateTime.now());
+                reportRepository.save(reportedPost);
+            }
+            return;
+        }
         post.setReportCount(post.getReportCount() + 1);
         if (post.getReportCount() >= 20) {
             post.setHidden(true);
@@ -50,6 +61,7 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
+    @Transactional
     public void updateStatus(Long reportId, ReportStatus status) {
         ReportedPost report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new NotFoundException("Report " + reportId + " not found!"));
@@ -62,6 +74,16 @@ public class ReportServiceImpl implements ReportService {
             else {
                 postServiceImpl.deleteReply(post, post.getAuthorId());
             }
+            reportRepository.deleteByTargetId(post.getId());
+            return;
+        }
+        if (status.equals(ReportStatus.REJECTED)) {
+            Post post = postRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new NotFoundException("Post " + report.getTargetId() + " not found!"));
+            post.setReportCount(post.getReportCount() - 1);
+            postRepository.save(post);
+            reportRepository.deleteByReporterIdAndTargetId(report.getReporterId(), post.getId());
+            return;
         }
         report.setStatus(status);
         reportRepository.save(report);
@@ -70,6 +92,14 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public List<ReportedPost> getReports(ReportStatus status) {
         return reportRepository.findAllByStatus(status);
+    }
+
+    @Override
+    public List<ReportedPost> getReportsOfPost(Long postId) {
+        if (!postRepository.existsById(postId)) {
+            throw new NotFoundException("No post " + postId);
+        }
+        return reportRepository.findByTargetId(postId);
     }
 
     private Long getUserId(String authorizationHeader) {

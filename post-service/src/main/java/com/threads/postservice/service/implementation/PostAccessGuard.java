@@ -1,6 +1,7 @@
 package com.threads.postservice.service.implementation;
 
 import com.threads.postservice.entity.Post;
+import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.exception.OwnershipException;
 import com.threads.postservice.feign.UserFeignClient;
 import com.threads.request.AccessRequest;
@@ -12,8 +13,8 @@ import org.springframework.stereotype.Service;
 public class PostAccessGuard {
     private final UserFeignClient userFeignClient;
 
-    public void checkOwnership(Post post, Long currentUserId) {
-        if (!post.getAuthorId().equals(currentUserId)) {
+    public void checkOwnership(Long authorId, Long currentUserId) {
+        if (!authorId.equals(currentUserId)) {
             throw new OwnershipException("You don't have access!");
         }
     }
@@ -24,6 +25,12 @@ public class PostAccessGuard {
     public void checkPostVisible(Post post) {
         if (post.getHidden()) {
             throw new IllegalStateException("Cannot find post " + post.getId());
+        }
+    }
+
+    public void checkUserExists(Long userId) {
+        if (!userFeignClient.checkUserExists(userId)) {
+            throw new NotFoundException("User " + userId + " not found!");
         }
     }
 
@@ -39,5 +46,11 @@ public class PostAccessGuard {
         accessRequest.setCurrentUserId(viewerId);
         accessRequest.setOwnerId(authorId);
         userFeignClient.checkAccessToProfile(accessRequest);
+    }
+    public void checkCanSendPost(Long viewerId, Long authorId) {
+        AccessRequest accessRequest = new AccessRequest();
+        accessRequest.setCurrentUserId(viewerId);
+        accessRequest.setOwnerId(authorId);
+        userFeignClient.canSendPost(accessRequest);
     }
 }

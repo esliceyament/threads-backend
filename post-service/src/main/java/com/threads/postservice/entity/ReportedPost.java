@@ -17,6 +17,7 @@ public class ReportedPost {
     private Long reporterId;
     private Long targetId;
 
+    @Column(length = 20)
     @Enumerated(EnumType.STRING)
     private ReportReason reason;
 

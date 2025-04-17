@@ -26,13 +26,17 @@ public class ReportController {
 
     @PutMapping("/update-status/{reportId}")
     public ResponseEntity<?> updateStatus(@PathVariable Long reportId, @RequestParam ReportStatus status) {
-
         reportService.updateStatus(reportId, status);
         return ResponseEntity.ok("Report " + reportId  + " was successfully updated to " + status);
     }
 
     @GetMapping()
-    public ResponseEntity<List<ReportedPost>> getReports(@RequestParam ReportStatus status) {
-        return ResponseEntity.ok(reportService.getReports(status));
+    public ResponseEntity<List<ReportedPost>> getReports(@RequestParam String status) {
+        return ResponseEntity.ok(reportService.getReports(ReportStatus.valueOf(status)));
+    }
+
+    @GetMapping("/{postId}")
+    public List<ReportedPost> getReportsOfPost(@PathVariable Long postId) {
+        return reportService.getReportsOfPost(postId);
     }
 }

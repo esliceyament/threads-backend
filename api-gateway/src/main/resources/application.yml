@@ -20,7 +20,7 @@ spring:
         - id: post-service
           uri: lb://POST-SERVICE
           predicates:
-            - Path=/posts/**
+            - Path=/posts/**, /likes/**, /share/**, /report/**, /repost/**, /save/**
 
 my:
   secret:
