@@ -1,6 +1,7 @@
 package com.threads.authservice.service;
 
 import com.threads.UserCreatedEvent;
+import com.threads.authservice.dto.ChangePasswordDto;
 import com.threads.authservice.dto.UserDto;
 import com.threads.authservice.dto.UserLoginDto;
 import com.threads.authservice.entity.User;
@@ -53,5 +54,17 @@ public class UserService {
         } catch (BadCredentialsException e) {
             throw new InvalidCredentialsException("Invalid username or password!");
         }
+    }
+
+    public void changePassword(ChangePasswordDto dto, String authorizationHeader) {
+        Long currentUserId = getUserId(authorizationHeader);
+        User user = repository.findById(currentUserId)
+                .orElseThrow(() -> new NotFoundException("User not found!"));
+        user.setPassword(dto.getPassword());
+        repository.save(user);
+    }
+
+    private Long getUserId(String authorizationHeader) {
+        return jwtService.extractId(authorizationHeader);
     }
 }

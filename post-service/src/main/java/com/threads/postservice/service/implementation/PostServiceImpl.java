@@ -1,6 +1,7 @@
 package com.threads.postservice.service.implementation;
 
 import com.threads.PinPostEvent;
+import com.threads.events.CreatePostEvent;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
@@ -54,12 +55,29 @@ public class PostServiceImpl implements PostService {
         post.setCreatedAt(LocalDateTime.now());
         post.setIsReply(false);
         post.setHidden(false);
+        List<PostMedia> mediaList;
+        List<String> mediaUrls = new ArrayList<>();
         if (media != null && !media.isEmpty()) {
-            List<PostMedia> mediaList = saveMediaFiles(media, post.getId());
+            mediaList = saveMediaFiles(media, post.getId());
             postMediaRepository.saveAll(mediaList);
             post.setMedia(mediaList);
+            mediaUrls.addAll(mediaList.stream().map(PostMedia::getMediaUrl).toList());
         }
         postRepository.save(post);
+
+        CreatePostEvent createPostEvent = new CreatePostEvent();
+        createPostEvent.setPostId(post.getId());
+        createPostEvent.setAuthorId(post.getAuthorId());
+        createPostEvent.setContent(post.getContent());
+        createPostEvent.setTopic(post.getTopic());
+        createPostEvent.setCreatedAt(post.getCreatedAt());
+        createPostEvent.setIsRepost(false);
+        createPostEvent.setMediaUrls(mediaUrls);
+        createPostEvent.setLikeCount(post.getLikeCount());
+        createPostEvent.setRepostCount(post.getRepostCount());
+        createPostEvent.setReplyCount(post.getReplyCount());
+        createPostEvent.setSendCount(post.getSendCount());
+        producer.sendCreatePostEvent(createPostEvent);
         return mapper.toDto(post);
     }
 

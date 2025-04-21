@@ -23,6 +23,8 @@ import java.util.List;
 public class PostController {
     private final PostService postService;
 
+    //search by topic
+
     @PostMapping(value = "/create-post", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostDto> createPost(@RequestPart("post") PostRequest request,
                                               @RequestPart(value = "media", required = false) List<MultipartFile> media,

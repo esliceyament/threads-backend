@@ -2,6 +2,7 @@ package com.threads.postservice.dto;
 
 import com.threads.postservice.entity.PostMedia;
 import com.threads.postservice.enums.ReplyPermission;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -12,7 +13,9 @@ public class PostDto {
     private Long id;
 
     private Long authorId;
+    @Size(max = 500)
     private String content;
+    @Size(max = 20)
     private String topic;
 
     private Boolean isPost;

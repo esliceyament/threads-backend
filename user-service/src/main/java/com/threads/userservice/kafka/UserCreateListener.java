@@ -26,7 +26,6 @@ public class UserCreateListener {
         UserProfile userProfile = repository.findById(pinPostEvent.getCurrentUserId())
                 .orElseThrow(() -> new NotFoundException("User not found!"));
         userProfile.setPinnedPostId(pinPostEvent.getPinnedPostId());
-        System.out.println("++========================");
         repository.save(userProfile);
     }
 }

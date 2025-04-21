@@ -11,7 +11,6 @@
         <module name="post-service" />
         <module name="feed-service" />
         <module name="search-service" />
-        <module name="media-service" />
         <module name="api-gateway" />
         <module name="user-service" />
         <module name="common-library" />
@@ -20,6 +19,9 @@
         <module name="service-discovery" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="media-service" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
