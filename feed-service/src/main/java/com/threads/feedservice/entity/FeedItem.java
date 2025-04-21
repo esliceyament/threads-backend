@@ -21,6 +21,7 @@ public class FeedItem {
 
     @Column(nullable = false)
     private Long authorId;
+    private String avatarUrl;
 
     @Column(nullable = false)
     private String authorUsername;

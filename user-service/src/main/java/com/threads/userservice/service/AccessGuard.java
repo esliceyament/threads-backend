@@ -1,5 +1,6 @@
 package com.threads.userservice.service;
 
+import com.threads.userservice.dto.UserFeedDto;
 import com.threads.userservice.entity.UserProfile;
 import com.threads.userservice.exception.AccessDeniedException;
 import com.threads.userservice.exception.NotFoundException;
@@ -46,4 +47,5 @@ public class AccessGuard {
     public boolean checkUserExists(Long userId) {
         return userProfileRepository.existsById(userId);
     }
+
 }

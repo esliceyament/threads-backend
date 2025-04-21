@@ -1,11 +1,11 @@
-package com.threads.feedservice.dto;
+package com.threads.userservice.dto;
 
 import lombok.Data;
 
 import java.util.List;
 
 @Data
-public class UserDto {
+public class UserFeedDto {
     private String username;
     private String avatarUrl;
     List<Long> followers;

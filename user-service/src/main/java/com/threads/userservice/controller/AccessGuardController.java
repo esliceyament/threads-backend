@@ -1,8 +1,11 @@
 package com.threads.userservice.controller;
 
 import com.threads.request.AccessRequest;
+import com.threads.userservice.dto.UserFeedDto;
 import com.threads.userservice.service.AccessGuard;
+import com.threads.userservice.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/access-guard")
 public class AccessGuardController {
     private final AccessGuard accessGuard;
+    private final UserProfileService profileService;
 
     @PostMapping("/profile")
     public ResponseEntity<Void> checkAccessToProfile(@RequestBody AccessRequest accessRequest) {
@@ -33,6 +37,11 @@ public class AccessGuardController {
     public ResponseEntity<Void> canSendPost(@RequestBody AccessRequest accessRequest) {
         accessGuard.canSendPost(accessRequest.getCurrentUserId(), accessRequest.getOwnerId());
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/user-feed")
+    public UserFeedDto getProfile(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
+        return profileService.getProfile(authorizationHeader);
     }
 
 }

@@ -1,6 +1,6 @@
 package com.threads.feedservice.controller;
 
-import com.threads.feedservice.service.FeedService;
+import com.threads.feedservice.service.implementation.FeedServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RequestMapping("/feed")
 public class FeedController {
-    private final FeedService service;
+    private final FeedServiceImpl service;
 
     @GetMapping
     public ResponseEntity<?> getUserFeed(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader,

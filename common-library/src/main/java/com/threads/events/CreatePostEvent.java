@@ -8,6 +8,7 @@ public class CreatePostEvent {
 
     private Long postId;
     private Long authorId;
+    private String avatarUrl;
     private String authorUsername;
 
     private String content;
@@ -58,6 +59,8 @@ public class CreatePostEvent {
 
     public Long getAuthorId() { return authorId; }
     public void setAuthorId(Long authorId) { this.authorId = authorId; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public String getAuthorUsername() { return authorUsername; }
     public void setAuthorUsername(String authorUsername) { this.authorUsername = authorUsername; }

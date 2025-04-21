@@ -1,7 +1,9 @@
 package com.threads.userservice.service;
 
 import com.threads.UserCreatedEvent;
+import com.threads.userservice.dto.UserFeedDto;
 import com.threads.userservice.dto.UserProfileDto;
+import com.threads.userservice.entity.Follow;
 import com.threads.userservice.entity.UserProfile;
 import com.threads.userservice.exception.AlreadyExistsException;
 import com.threads.userservice.exception.NotFoundException;
@@ -12,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +57,16 @@ public class UserProfileService {
 
     public UserProfileDto getMyProfile(String authorizationHeader) {
         return mapper.toDto(repository.findById(getUserId(authorizationHeader)).get());
+    }
+
+    public UserFeedDto getProfile(String authorizationHeader) {
+        UserProfile user = repository.findById(getUserId(authorizationHeader)).get();
+        Set<Follow> followList = user.getFollowers();
+        UserFeedDto userFeedDto = new UserFeedDto();
+        userFeedDto.setUsername(user.getUsername());
+        userFeedDto.setAvatarUrl(user.getAvatarUrl());
+        userFeedDto.setFollowers(followList.stream().map(follow -> follow.getFollowing().getId()).toList());
+        return userFeedDto;
     }
 
     private Long getUserId(String authorizationHeader) {

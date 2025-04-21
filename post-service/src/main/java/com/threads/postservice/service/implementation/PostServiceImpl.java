@@ -55,9 +55,9 @@ public class PostServiceImpl implements PostService {
         post.setCreatedAt(LocalDateTime.now());
         post.setIsReply(false);
         post.setHidden(false);
-        List<PostMedia> mediaList;
         List<String> mediaUrls = new ArrayList<>();
         if (media != null && !media.isEmpty()) {
+            List<PostMedia> mediaList;
             mediaList = saveMediaFiles(media, post.getId());
             postMediaRepository.saveAll(mediaList);
             post.setMedia(mediaList);
