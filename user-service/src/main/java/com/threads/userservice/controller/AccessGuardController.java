@@ -5,7 +5,6 @@ import com.threads.userservice.dto.UserFeedDto;
 import com.threads.userservice.service.AccessGuard;
 import com.threads.userservice.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,9 +38,9 @@ public class AccessGuardController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/user-feed")
-    public UserFeedDto getProfile(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
-        return profileService.getProfile(authorizationHeader);
+    @PostMapping("/user-feed/{id}")
+    public UserFeedDto getProfile(@PathVariable Long id) {
+        return profileService.getProfile(id);
     }
 
 }

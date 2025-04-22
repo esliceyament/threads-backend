@@ -11,7 +11,6 @@ public class FeedItemDto {
     private Long postId;
 
     private Long authorId;
-    private String avatarUrl;
     private String authorUsername;
 
     private String content;

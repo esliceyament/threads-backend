@@ -1,9 +1,12 @@
 package com.threads.postservice.service.implementation;
 
+import com.threads.events.CreatePostEvent;
+import com.threads.events.PostStatusEvent;
 import com.threads.postservice.entity.Post;
 import com.threads.postservice.entity.Repost;
 import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.feign.SecurityFeignClient;
+import com.threads.postservice.kafka.KafkaPostProducer;
 import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.repository.PostRepository;
 import com.threads.postservice.repository.RepostRepository;
@@ -24,6 +27,7 @@ public class RepostServiceImpl implements RepostService {
     private final PostMapper mapper;
     private final SecurityFeignClient securityFeignClient;
     private final PostAccessGuard accessGuard;
+    private final KafkaPostProducer producer;
 
     @Override
     public void repostPost(Long postId, String authorizationHeader) {
@@ -42,6 +46,24 @@ public class RepostServiceImpl implements RepostService {
         repost.setPostId(postId);
         postRepository.save(originalPost);
         repostRepository.save(repost);
+
+        CreatePostEvent createPostEvent = new CreatePostEvent();
+        createPostEvent.setPostId(repost.getId());
+        createPostEvent.setAuthorId(originalPost.getAuthorId());
+        createPostEvent.setContent(originalPost.getContent());
+        createPostEvent.setTopic(originalPost.getTopic());
+        createPostEvent.setCreatedAt(originalPost.getCreatedAt());
+        createPostEvent.setIsRepost(true);
+        createPostEvent.setOriginalPostId(originalPost.getId());
+        createPostEvent.setRepostedByUserId(repost.getUserId());
+        createPostEvent.setLikeCount(originalPost.getLikeCount());
+        createPostEvent.setRepostCount(originalPost.getRepostCount());
+        createPostEvent.setReplyCount(originalPost.getReplyCount());
+        createPostEvent.setSendCount(originalPost.getSendCount());
+        producer.sendCreatePostEvent(createPostEvent);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
+                originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override
@@ -56,6 +78,9 @@ public class RepostServiceImpl implements RepostService {
         originalPost.setRepostCount(originalPost.getRepostCount() - 1);
         postRepository.save(originalPost);
         repostRepository.delete(repost);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
+                originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override

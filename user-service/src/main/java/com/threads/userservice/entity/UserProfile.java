@@ -22,7 +22,6 @@ public class UserProfile {
     private String username;
 
     private String bio;
-    private String avatarUrl;
 
     @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Follow> following = new HashSet<>();

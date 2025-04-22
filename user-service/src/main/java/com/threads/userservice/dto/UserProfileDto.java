@@ -9,7 +9,6 @@ public class UserProfileDto {
     private String username;
 
     private String bio;
-    private String avatarUrl;
 
     private Boolean isPrivate;
 

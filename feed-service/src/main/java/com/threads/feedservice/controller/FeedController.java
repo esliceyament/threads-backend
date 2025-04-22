@@ -14,8 +14,7 @@ public class FeedController {
 
     @GetMapping
     public ResponseEntity<?> getUserFeed(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader,
-                                         @RequestParam(value = "page", defaultValue = "1") int page,
-                                         @RequestParam(value = "size", defaultValue = "15") int size) {
-        return ResponseEntity.ok(service.getUserFeed(authorizationHeader, page, size));
+                                         @RequestParam(value = "page", defaultValue = "1") int page) {
+        return ResponseEntity.ok(service.getUserFeed(authorizationHeader, page));
     }
 }

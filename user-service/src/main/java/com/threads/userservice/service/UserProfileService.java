@@ -1,6 +1,7 @@
 package com.threads.userservice.service;
 
 import com.threads.UserCreatedEvent;
+import com.threads.events.UsernameUpdateEvent;
 import com.threads.userservice.dto.UserFeedDto;
 import com.threads.userservice.dto.UserProfileDto;
 import com.threads.userservice.entity.Follow;
@@ -8,6 +9,7 @@ import com.threads.userservice.entity.UserProfile;
 import com.threads.userservice.exception.AlreadyExistsException;
 import com.threads.userservice.exception.NotFoundException;
 import com.threads.userservice.feign.SecurityFeignClient;
+import com.threads.userservice.kafka.KafkaUserProducer;
 import com.threads.userservice.mapper.UserProfileMapper;
 import com.threads.userservice.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class UserProfileService {
     private final UserProfileMapper mapper;
     private final SecurityFeignClient securityFeignClient;
     private final AccessGuard accessGuard;
+    private final KafkaUserProducer producer;
 
     public void createProfile(UserCreatedEvent request) {
         UserProfile profile = new UserProfile();
@@ -33,12 +36,17 @@ public class UserProfileService {
     }
 
     public UserProfileDto updateProfile(String authorizationHeader, UserProfileDto dto) {
-        UserProfile userProfile = repository.findById(getUserId(authorizationHeader)).get();
+        Long currentUserId = getUserId(authorizationHeader);
+        UserProfile userProfile = repository.findById(currentUserId).get();
         if (repository.existsByUsername(dto.getUsername()) && !userProfile.getUsername().equals(dto.getUsername())) {
             throw new AlreadyExistsException("Username already exists!");
         }
         mapper.updateProfile(dto, userProfile);
         repository.save(userProfile);
+        if (dto.getUsername() != null) {
+            UsernameUpdateEvent event = new UsernameUpdateEvent(currentUserId, dto.getUsername());
+            producer.sendUsernameUpdateEvent(event);
+        }
         return mapper.toDto(userProfile);
     }
 
@@ -59,12 +67,12 @@ public class UserProfileService {
         return mapper.toDto(repository.findById(getUserId(authorizationHeader)).get());
     }
 
-    public UserFeedDto getProfile(String authorizationHeader) {
-        UserProfile user = repository.findById(getUserId(authorizationHeader)).get();
+    public UserFeedDto getProfile(Long id) {
+        UserProfile user = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found!"));
         Set<Follow> followList = user.getFollowers();
         UserFeedDto userFeedDto = new UserFeedDto();
         userFeedDto.setUsername(user.getUsername());
-        userFeedDto.setAvatarUrl(user.getAvatarUrl());
         userFeedDto.setFollowers(followList.stream().map(follow -> follow.getFollowing().getId()).toList());
         return userFeedDto;
     }

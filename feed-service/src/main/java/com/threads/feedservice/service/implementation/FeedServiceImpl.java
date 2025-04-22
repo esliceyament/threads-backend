@@ -1,6 +1,9 @@
 package com.threads.feedservice.service.implementation;
 
 import com.threads.events.CreatePostEvent;
+import com.threads.events.PostStatusEvent;
+import com.threads.events.UpdatePostEvent;
+import com.threads.events.UsernameUpdateEvent;
 import com.threads.feedservice.dto.FeedItemDto;
 import com.threads.feedservice.dto.PageDto;
 import com.threads.feedservice.dto.UserDto;
@@ -8,6 +11,7 @@ import com.threads.feedservice.entity.FeedItem;
 import com.threads.feedservice.feign.SecurityFeignClient;
 import com.threads.feedservice.mapper.FeedMapper;
 import com.threads.feedservice.repository.FeedRepository;
+import com.threads.feedservice.service.FeedService;
 import com.threads.feedservice.service.cache.FeedCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,53 +19,60 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class FeedServiceImpl {
+public class FeedServiceImpl implements FeedService {
     private final FeedRepository repository;
     private final SecurityFeignClient securityFeignClient;
     private final FeedMapper mapper;
     private final FeedCacheService cacheService;
 
-    public PageDto<FeedItemDto> getUserFeed(String authorizationHeader, int page, int size) {
+    public PageDto<FeedItemDto> getUserFeed(String authorizationHeader, int page) {
         Long currentUserId = getUserId(authorizationHeader);
-        PageDto<FeedItemDto> feedPageCached = cacheService.getCachedFeed(currentUserId, page, size);
+        PageDto<FeedItemDto> feedPageCached = cacheService.getCachedFeed(currentUserId, page);
         if (feedPageCached != null) {
             return feedPageCached;
         }
-        PageDto<FeedItemDto> feedPage = getUserFeedOrCache(currentUserId, page, size);
-        cacheService.cacheFeed(currentUserId, page, size, feedPage);
+        PageDto<FeedItemDto> feedPage = getUserFeedOrCache(currentUserId, page);
+        cacheService.cacheFeed(currentUserId, page, feedPage);
         return feedPage;
     }
 
-    private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<FeedItem> feedPage = repository.findAllByUserId(currentUserId, pageable);
+    private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page) {
+        Pageable pageable = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrue(currentUserId, pageable);
         List<FeedItemDto> content = feedPage.stream()
                 .map(mapper::toDto).toList();
-        return new PageDto<>(page, size, feedPage.getTotalElements(), feedPage.getTotalPages(), content);
+        return new PageDto<>(page, 20, feedPage.getTotalElements(), feedPage.getTotalPages(), content);
     }
 
-    public void handleCreatePostEvent(CreatePostEvent event, String authorizationHeader) {
-        UserDto userDto = securityFeignClient.getProfile(authorizationHeader);
+    public void handleCreatePostEvent(CreatePostEvent event) {
+        UserDto userDto = securityFeignClient.getProfile(event.getAuthorId());
+        String repostOwnerUsername = null;
+        if (event.getIsRepost()) {
+            UserDto repostOwner = securityFeignClient.getProfile(event.getRepostedByUserId());
+            repostOwnerUsername = repostOwner.getUsername();
+        }
+        final String finalRepostOwnerUsername = repostOwnerUsername;
         List<FeedItem> feedItems = userDto.getFollowers().stream()
                 .map(followerId -> {
                     FeedItem feedItem = new FeedItem();
                     feedItem.setUserId(followerId);
                     feedItem.setPostId(event.getPostId());
                     feedItem.setAuthorId(event.getAuthorId());
-                    feedItem.setAvatarUrl(event.getAvatarUrl());
                     feedItem.setAuthorUsername(userDto.getUsername());
                     feedItem.setContent(event.getContent());
                     feedItem.setTopic(event.getTopic());
                     feedItem.setCreatedAt(event.getCreatedAt());
                     feedItem.setIsRepost(event.getIsRepost());
                     feedItem.setRepostedByUserId(event.getRepostedByUserId());
-                    feedItem.setRepostedByUsername(event.getRepostedByUsername());
+                    feedItem.setRepostedByUsername(finalRepostOwnerUsername);
                     feedItem.setMediaUrls(event.getMediaUrls());
+                    feedItem.setIsVisible(true);
                     feedItem.setLikeCount(event.getLikeCount());
                     feedItem.setRepostCount(event.getRepostCount());
                     feedItem.setReplyCount(event.getReplyCount());
@@ -70,7 +81,63 @@ public class FeedServiceImpl {
                 }).toList();
         repository.saveAll(feedItems);
 
-        //feedItems.stream().forEach(cacheService.evictFeed(1L, 1, 15));
+        feedItems.stream().map(FeedItem::getUserId)
+                .distinct()
+                .forEach(userId -> {
+                    for (int i = 0; i < 3; i++) {
+                        cacheService.evictFeed(userId, i);
+                    }
+                });
+    }
+
+    public void handleUpdatePostEvent(UpdatePostEvent updatePostEvent) {
+        List<FeedItem> feedItems = repository.findByPostId(updatePostEvent.getPostId());
+        feedItems.forEach(feedItem -> {
+            feedItem.setContent(updatePostEvent.getContent());
+            feedItem.setTopic(updatePostEvent.getTopic());
+        });
+        repository.saveAll(feedItems);
+
+        feedItems.stream().map(FeedItem::getUserId)
+                .distinct()
+                .forEach(userId -> {
+                    for (int i = 0; i < 3; i++) {
+                        cacheService.evictFeed(userId, i);
+                    }
+                });
+    }
+
+    public void handlePostStatusEvent(PostStatusEvent postStatusEvent) {
+        List<FeedItem> feedItems = repository.findByPostId(postStatusEvent.getPostId());
+        feedItems.forEach(feedItem -> {
+            feedItem.setLikeCount(postStatusEvent.getLikeCount());
+            feedItem.setRepostCount(postStatusEvent.getRepostCount());
+            feedItem.setReplyCount(postStatusEvent.getReplyCount());
+            feedItem.setSendCount(postStatusEvent.getSendCount());
+        });
+        repository.saveAll(feedItems);
+    }
+
+    public void handleUsernameUpdateEvent(UsernameUpdateEvent usernameUpdateEvent) {
+        List<FeedItem> feedItem = repository.findByAuthorId(usernameUpdateEvent.getUserId());
+        feedItem.forEach(feed -> feed.setAuthorUsername(usernameUpdateEvent.getUsername()));
+        repository.saveAll(feedItem);
+    }
+
+    @Transactional
+    public void handlePostDeleteEvent(Long postId) {
+        repository.deleteAllByPostId(postId);
+    }
+
+    public void handlePostArchiveEvent(Long postId) {
+        List<FeedItem> feedItems = repository.findByPostId(postId);
+        feedItems.forEach(feed -> feed.setIsVisible(false));
+        repository.saveAll(feedItems);
+    }
+    public void handlePostUnarchiveEvent(Long postId) {
+        List<FeedItem> feedItems = repository.findByPostId(postId);
+        feedItems.forEach(feed -> feed.setIsVisible(true));
+        repository.saveAll(feedItems);
     }
 
     private Long getUserId(String authorizationHeader) {

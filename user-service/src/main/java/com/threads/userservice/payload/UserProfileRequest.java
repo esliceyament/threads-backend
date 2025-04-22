@@ -7,7 +7,6 @@ public class UserProfileRequest {
     private String username;
 
     private String bio;
-    private String avatarUrl;
 
     private Boolean isPrivate;
 }

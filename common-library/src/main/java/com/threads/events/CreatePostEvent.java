@@ -8,7 +8,6 @@ public class CreatePostEvent {
 
     private Long postId;
     private Long authorId;
-    private String avatarUrl;
     private String authorUsername;
 
     private String content;
@@ -17,6 +16,7 @@ public class CreatePostEvent {
     private LocalDateTime createdAt;
 
     private Boolean isRepost;
+    private Long originalPostId;
     private Long repostedByUserId;
     private String repostedByUsername;
 
@@ -59,8 +59,6 @@ public class CreatePostEvent {
 
     public Long getAuthorId() { return authorId; }
     public void setAuthorId(Long authorId) { this.authorId = authorId; }
-    public String getAvatarUrl() { return avatarUrl; }
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     public String getAuthorUsername() { return authorUsername; }
     public void setAuthorUsername(String authorUsername) { this.authorUsername = authorUsername; }
@@ -76,6 +74,9 @@ public class CreatePostEvent {
 
     public Boolean getIsRepost() { return isRepost; }
     public void setIsRepost(Boolean isRepost) { this.isRepost = isRepost; }
+
+    public Long getOriginalPostId() {return originalPostId;}
+    public void setOriginalPostId(Long originalPostId) {this.originalPostId = originalPostId;}
 
     public Long getRepostedByUserId() { return repostedByUserId; }
     public void setRepostedByUserId(Long repostedByUserId) { this.repostedByUserId = repostedByUserId; }

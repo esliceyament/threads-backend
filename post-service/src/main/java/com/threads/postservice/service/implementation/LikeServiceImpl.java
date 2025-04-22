@@ -1,9 +1,11 @@
 package com.threads.postservice.service.implementation;
 
+import com.threads.events.PostStatusEvent;
 import com.threads.postservice.entity.Like;
 import com.threads.postservice.entity.Post;
 import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.feign.SecurityFeignClient;
+import com.threads.postservice.kafka.KafkaPostProducer;
 import com.threads.postservice.repository.LikeRepository;
 import com.threads.postservice.repository.PostRepository;
 import com.threads.postservice.response.LikeResponse;
@@ -22,6 +24,7 @@ public class LikeServiceImpl implements LikeService {
     private final LikeRepository likeRepository;
     private final PostAccessGuard accessGuard;
     private final SecurityFeignClient securityFeignClient;
+    private final KafkaPostProducer producer;
 
     @Override
     public void likePost(Long postId, String authorizationHeader) {
@@ -35,6 +38,9 @@ public class LikeServiceImpl implements LikeService {
         post.setLikeCount(post.getLikeCount() + 1);
         likeRepository.save(new Like(currentUserId, postId, LocalDateTime.now()));
         postRepository.save(post);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(post.getId(), post.getLikeCount(),
+                post.getRepostCount(), post.getReplyCount(), post.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override
@@ -48,6 +54,9 @@ public class LikeServiceImpl implements LikeService {
             post.setLikeCount(post.getLikeCount() - 1);
             likeRepository.deleteByUserIdAndPostId(currentUserId, postId);
             postRepository.save(post);
+            PostStatusEvent postStatusEvent = new PostStatusEvent(post.getId(), post.getLikeCount(),
+                    post.getRepostCount(), post.getReplyCount(), post.getSendCount());
+            producer.sendPostStatusEvent(postStatusEvent);
         }
     }
 

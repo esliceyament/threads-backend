@@ -7,6 +7,5 @@ import java.util.List;
 @Data
 public class UserDto {
     private String username;
-    private String avatarUrl;
     List<Long> followers;
 }

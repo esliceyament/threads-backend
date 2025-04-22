@@ -2,6 +2,8 @@ package com.threads.postservice.service.implementation;
 
 import com.threads.PinPostEvent;
 import com.threads.events.CreatePostEvent;
+import com.threads.events.PostStatusEvent;
+import com.threads.events.UpdatePostEvent;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
@@ -13,7 +15,7 @@ import com.threads.postservice.enums.ReplyPermission;
 import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.exception.OwnershipException;
 import com.threads.postservice.feign.SecurityFeignClient;
-import com.threads.postservice.kafka.PinnedPostProducer;
+import com.threads.postservice.kafka.KafkaPostProducer;
 import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.payload.PostRequest;
 import com.threads.postservice.payload.QuotePostRequest;
@@ -39,7 +41,7 @@ public class PostServiceImpl implements PostService {
     private final SecurityFeignClient securityFeignClient;
     private final RepostRepository repostRepository;
     private final PostAccessGuard accessGuard;
-    private final PinnedPostProducer producer;
+    private final KafkaPostProducer producer;
     private final LikeRepository likeRepository;
     private final SaveRepository saveRepository;
     private final PostMediaRepository postMediaRepository;
@@ -65,19 +67,9 @@ public class PostServiceImpl implements PostService {
         }
         postRepository.save(post);
 
-        CreatePostEvent createPostEvent = new CreatePostEvent();
-        createPostEvent.setPostId(post.getId());
-        createPostEvent.setAuthorId(post.getAuthorId());
-        createPostEvent.setContent(post.getContent());
-        createPostEvent.setTopic(post.getTopic());
-        createPostEvent.setCreatedAt(post.getCreatedAt());
-        createPostEvent.setIsRepost(false);
-        createPostEvent.setMediaUrls(mediaUrls);
-        createPostEvent.setLikeCount(post.getLikeCount());
-        createPostEvent.setRepostCount(post.getRepostCount());
-        createPostEvent.setReplyCount(post.getReplyCount());
-        createPostEvent.setSendCount(post.getSendCount());
+        CreatePostEvent createPostEvent = createPostEvent(post, mediaUrls);
         producer.sendCreatePostEvent(createPostEvent);
+
         return mapper.toDto(post);
     }
 
@@ -111,6 +103,9 @@ public class PostServiceImpl implements PostService {
         }
         postRepository.save(reply);
         postRepository.save(post);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(post.getId(), post.getLikeCount(),
+                post.getRepostCount(), post.getReplyCount(), post.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
         return mapper.toDtoReply(reply);
     }
 
@@ -125,6 +120,8 @@ public class PostServiceImpl implements PostService {
         mapper.updatePost(postDto, post);
         post.setUpdatedAt(LocalDateTime.now());
         postRepository.save(post);
+        UpdatePostEvent updatePostEvent = new UpdatePostEvent(post.getId(), post.getContent(), postDto.getTopic());
+        producer.sendUpdatePostEvent(updatePostEvent);
         return mapper.toDto(post);
     }
 
@@ -183,6 +180,11 @@ public class PostServiceImpl implements PostService {
         quote.setReplyPermission(ReplyPermission.EVERYONE);
         quote.setCreatedAt(LocalDateTime.now());
         postRepository.save(quote);
+
+        CreatePostEvent createPostEvent = createPostEvent(quote, null);
+        createPostEvent.setOriginalPostId(originalPost.getId());
+        producer.sendCreatePostEvent(createPostEvent);
+
         return mapper.toResponse(quote);
     }
 
@@ -241,6 +243,7 @@ public class PostServiceImpl implements PostService {
         shareRepository.deleteByPostId(post.getId());
         reportRepository.deleteByTargetId(post.getId());
         postRepository.delete(post);
+        producer.sendPostDeleteEvent(post.getId());
     }
 
     protected void deleteReply(Post reply, Long currentUserId) {
@@ -257,6 +260,9 @@ public class PostServiceImpl implements PostService {
                 originalPost.setPinnedReplyId(null);
             }
             postRepository.save(originalPost);
+            PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
+                    originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
+            producer.sendPostStatusEvent(postStatusEvent);
         }
         else {
             if (accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
@@ -296,6 +302,7 @@ public class PostServiceImpl implements PostService {
         postRepository.saveAll(replies);
         post.setHidden(true);
         postRepository.save(post);
+        producer.sendPostArchiveEvent(post.getId());
     }
 
     private void archiveReply(Post reply, Long currentUserId) {
@@ -312,6 +319,9 @@ public class PostServiceImpl implements PostService {
         }
         postRepository.save(reply);
         postRepository.save(originalPost);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
+                originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override
@@ -348,6 +358,7 @@ public class PostServiceImpl implements PostService {
         List<Post> replies = postRepository.findByOriginalPostId(post.getId());
         replies.forEach(reply -> reply.setHidden(false));
         postRepository.saveAll(replies);
+        producer.sendPostUnarchiveEvent(post.getId());
     }
 
     private void unarchiveReply(Post reply, Long currentUserId) {
@@ -359,6 +370,10 @@ public class PostServiceImpl implements PostService {
             return;
         }
         reply.setHidden(false);
+        originalPost.setReplyCount(originalPost.getReplyCount() + 1);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
+                originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override
@@ -445,5 +460,22 @@ public class PostServiceImpl implements PostService {
             mediaList.add(postMedia);
         }
         return mediaList;
+    }
+
+    private CreatePostEvent createPostEvent(Post post, List<String> mediaUrls) {
+        CreatePostEvent createPostEvent = new CreatePostEvent();
+        createPostEvent.setPostId(post.getId());
+        createPostEvent.setAuthorId(post.getAuthorId());
+        createPostEvent.setContent(post.getContent());
+        createPostEvent.setTopic(post.getTopic());
+        createPostEvent.setCreatedAt(post.getCreatedAt());
+        createPostEvent.setIsRepost(false);
+        createPostEvent.setMediaUrls(mediaUrls);
+        createPostEvent.setLikeCount(post.getLikeCount());
+        createPostEvent.setRepostCount(post.getRepostCount());
+        createPostEvent.setReplyCount(post.getReplyCount());
+        createPostEvent.setSendCount(post.getSendCount());
+        producer.sendCreatePostEvent(createPostEvent);
+        return createPostEvent;
     }
 }

@@ -1,9 +1,11 @@
 package com.threads.postservice.service.implementation;
 
+import com.threads.events.PostStatusEvent;
 import com.threads.postservice.entity.Post;
 import com.threads.postservice.entity.PostShare;
 import com.threads.postservice.exception.NotFoundException;
 import com.threads.postservice.feign.SecurityFeignClient;
+import com.threads.postservice.kafka.KafkaPostProducer;
 import com.threads.postservice.mapper.PostMapper;
 import com.threads.postservice.payload.ShareRequest;
 import com.threads.postservice.repository.PostRepository;
@@ -24,6 +26,7 @@ public class PostShareServiceImpl implements PostShareService {
     private final SecurityFeignClient securityFeignClient;
     private final PostAccessGuard accessGuard;
     private final PostMapper mapper;
+    private final KafkaPostProducer producer;
 
     @Override
     public void sendPost(ShareRequest request, Long receiverId, String authorizationHeader) {
@@ -41,6 +44,9 @@ public class PostShareServiceImpl implements PostShareService {
         share.setSentAt(LocalDateTime.now());
         repository.save(share);
         postRepository.save(post);
+        PostStatusEvent postStatusEvent = new PostStatusEvent(post.getId(), post.getLikeCount(),
+                post.getRepostCount(), post.getReplyCount(), post.getSendCount());
+        producer.sendPostStatusEvent(postStatusEvent);
     }
 
     @Override

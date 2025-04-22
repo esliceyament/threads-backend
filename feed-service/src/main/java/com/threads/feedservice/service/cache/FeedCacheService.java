@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.threads.feedservice.dto.FeedItemDto;
 import com.threads.feedservice.dto.PageDto;
-import com.threads.feedservice.repository.FeedRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
@@ -17,13 +16,12 @@ public class FeedCacheService {
 
     private final JedisPool jedisPool;
     private final ObjectMapper mapper;
-    private final FeedRepository repository;
 
-    private static final int CACHE_TTL_SECONDS = 200;
+    private static final int CACHE_TTL_SECONDS = 150;
     private static final String FEED_CACHE_KEY_PREFIX = "feed:";
 
-    public void cacheFeed(Long userId, int page, int size, PageDto<FeedItemDto> feedPage) {
-        String cacheKey = buildCacheKey(userId, page, size);
+    public void cacheFeed(Long userId, int page, PageDto<FeedItemDto> feedPage) {
+        String cacheKey = buildCacheKey(userId, page);
         try (Jedis jedis = jedisPool.getResource()) {
             String jsonFeed = mapper.writeValueAsString(feedPage);
             jedis.setex(cacheKey, CACHE_TTL_SECONDS, jsonFeed);
@@ -32,12 +30,12 @@ public class FeedCacheService {
         }
     }
 
-    public PageDto<FeedItemDto> getCachedFeed(Long userId, int page, int size) {
-        String cacheKey = buildCacheKey(userId, page, size);
+    public PageDto<FeedItemDto> getCachedFeed(Long userId, int page) {
+        String cacheKey = buildCacheKey(userId, page);
         try (Jedis jedis = jedisPool.getResource()) {
             String jsonFeed = jedis.get(cacheKey);
             if (jsonFeed != null) {
-                return mapper.readValue(jsonFeed, new TypeReference<PageDto<FeedItemDto>>() {});
+                return mapper.readValue(jsonFeed, new TypeReference<>() {});
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -45,14 +43,14 @@ public class FeedCacheService {
         return null;
     }
 
-    public void evictFeed(Long userId, int page, int size) {
+    public void evictFeed(Long userId, int page) {
         try (Jedis jedis = jedisPool.getResource()) {
-            String cacheKey = buildCacheKey(userId, page, size);
+            String cacheKey = buildCacheKey(userId, page);
             jedis.del(cacheKey);
         }
     }
 
-    private String buildCacheKey(Long userId, int page, int size) {
-        return FEED_CACHE_KEY_PREFIX + userId + "_" + page + "_" + size;
+    private String buildCacheKey(Long userId, int page) {
+        return FEED_CACHE_KEY_PREFIX + userId + "_" + page;
     }
 }
