@@ -153,12 +153,12 @@ public class PostServiceImpl implements PostService {
         Long currentUserId = getUserId(authorizationHeader);
         Post post = findPostOrThrow(postId, currentUserId);
         if (post.getAuthorId().equals(currentUserId)) {
-            return postRepository.findByOriginalPostIdOrderByCreatedAtAsc(postId)
+            return postRepository.findByOriginalPostIdOrderByLikeCountDesc(postId)
                     .stream().
                     map(mapper::toResponse).toList();
         }
         accessGuard.checkUserAccessToPost(currentUserId, post.getAuthorId());
-        return postRepository.findByOriginalPostIdAndHiddenFalse(postId)
+        return postRepository.findByOriginalPostIdAndHiddenFalseOrderByLikeCountDesc(postId)
                 .stream()
                 .map(mapper::toResponse).toList();
     }
@@ -192,7 +192,7 @@ public class PostServiceImpl implements PostService {
     public List<PostResponse> getUserPosts(Long authorId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         accessGuard.checkUserAccessToPost(currentUserId, authorId);
-        return postRepository.findByAuthorIdAndIsPostTrueAndHiddenFalse(authorId)
+        return postRepository.findByAuthorIdAndIsPostTrueAndHiddenFalseOrderByCreatedAtDesc(authorId)
                 .stream()
                 .map(mapper::toResponse).toList();
     }
@@ -201,21 +201,21 @@ public class PostServiceImpl implements PostService {
     public List<PostResponse> getUserReplies(Long authorId, String authorizationHeader) {
         Long currentUserId = getUserId(authorizationHeader);
         accessGuard.checkUserAccessToPost(currentUserId, authorId);
-        return postRepository.findByAuthorIdAndIsReplyTrueAndHiddenFalse(authorId)
+        return postRepository.findByAuthorIdAndIsReplyTrueAndHiddenFalseOrderByCreatedAtDesc(authorId)
                 .stream()
                 .map(mapper::toResponse).toList();
     }
 
     @Override
     public List<PostResponse> getMyPosts(String authorizationHeader) {
-        return postRepository.findByAuthorIdAndIsPostTrueAndHiddenFalse(getUserId(authorizationHeader))
+        return postRepository.findByAuthorIdAndIsPostTrueAndHiddenFalseOrderByCreatedAtDesc(getUserId(authorizationHeader))
                 .stream()
                 .map(mapper::toResponse).toList();
     }
 
     @Override
     public List<PostResponse> getMyReplies(String authorizationHeader) {
-        return postRepository.findByAuthorIdAndIsReplyTrueAndHiddenFalse(getUserId(authorizationHeader))
+        return postRepository.findByAuthorIdAndIsReplyTrueAndHiddenFalseOrderByCreatedAtDesc(getUserId(authorizationHeader))
                 .stream()
                 .map(mapper::toResponse).toList();
     }

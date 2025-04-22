@@ -8,10 +8,10 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByOriginalPostId(Long id);
-    List<Post> findByOriginalPostIdOrderByCreatedAtAsc(Long id);
-    List<Post> findByOriginalPostIdAndHiddenFalse(Long id);
+    List<Post> findByOriginalPostIdOrderByLikeCountDesc(Long id);
+    List<Post> findByOriginalPostIdAndHiddenFalseOrderByLikeCountDesc(Long id);
     Optional<Post> findByIdAndHiddenFalse(Long id);
-    List<Post> findByAuthorIdAndIsPostTrueAndHiddenFalse(Long authorId);
-    List<Post> findByAuthorIdAndIsReplyTrueAndHiddenFalse(Long authorId);
+    List<Post> findByAuthorIdAndIsPostTrueAndHiddenFalseOrderByCreatedAtDesc(Long authorId);
+    List<Post> findByAuthorIdAndIsReplyTrueAndHiddenFalseOrderByCreatedAtDesc(Long authorId);
     List<Post> findByAuthorIdAndIsPostTrueAndHiddenTrue(Long authorId);
 }
