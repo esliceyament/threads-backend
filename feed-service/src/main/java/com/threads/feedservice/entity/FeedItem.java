@@ -46,4 +46,6 @@ public class FeedItem {
     private int repostCount;
     private int replyCount;
     private int sendCount;
+
+    private double trendScore;
 }

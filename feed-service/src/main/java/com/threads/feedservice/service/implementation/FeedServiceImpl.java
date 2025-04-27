@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -42,6 +43,18 @@ public class FeedServiceImpl implements FeedService {
         PageDto<FeedItemDto> feedPage = getUserFeedOrCache(currentUserId, page);
         cacheService.cacheFeed(currentUserId, page, feedPage);
         return feedPage;
+    }
+
+    public PageDto<FeedItemDto> getTrending() {
+        if (cacheService.getCachedTrending() != null) {
+            return cacheService.getCachedTrending();
+        }
+        LocalDateTime time = LocalDateTime.now().minusHours(24);
+        Pageable pageable = PageRequest.of(0, 100);
+        Page<FeedItem> feedItems = repository.findByCreatedAtAfterOrderByTrendScoreDesc(time, pageable);
+        List<FeedItemDto> feedItemDtoList = feedItems.stream()
+                .map(mapper::toDto).toList();
+        return new PageDto<>(0, 100, feedItems.getTotalElements(), feedItems.getTotalPages(), feedItemDtoList);
     }
 
     private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page) {

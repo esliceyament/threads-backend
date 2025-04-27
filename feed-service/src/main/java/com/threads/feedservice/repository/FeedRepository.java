@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface FeedRepository extends JpaRepository<FeedItem, Long> {
@@ -14,4 +15,6 @@ public interface FeedRepository extends JpaRepository<FeedItem, Long> {
     List<FeedItem> findByOriginalPostId(Long postId);
     void deleteAllByPostId(Long postId);
     void deleteAllByOriginalPostId(Long postId);
+    List<FeedItem> getFeedItemsByCreatedAtAfter(LocalDateTime time);
+    Page<FeedItem> findByCreatedAtAfterOrderByTrendScoreDesc(LocalDateTime after, Pageable pageable);
 }

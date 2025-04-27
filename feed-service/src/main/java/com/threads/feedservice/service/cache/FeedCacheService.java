@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class FeedCacheService {
@@ -33,6 +35,29 @@ public class FeedCacheService {
     public PageDto<FeedItemDto> getCachedFeed(Long userId, int page) {
         String cacheKey = buildCacheKey(userId, page);
         try (Jedis jedis = jedisPool.getResource()) {
+            String jsonFeed = jedis.get(cacheKey);
+            if (jsonFeed != null) {
+                return mapper.readValue(jsonFeed, new TypeReference<>() {});
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    public void cacheTrending(List<FeedItemDto> dtoList) {
+        String cacheKey = "trending";
+        try (Jedis jedis = jedisPool.getResource()) {
+            String jsonFeed = mapper.writeValueAsString(dtoList);
+            jedis.setex(cacheKey, 30 * 60, jsonFeed);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public PageDto<FeedItemDto> getCachedTrending() {
+        String cacheKey = "trending";
+        try(Jedis jedis = jedisPool.getResource()) {
             String jsonFeed = jedis.get(cacheKey);
             if (jsonFeed != null) {
                 return mapper.readValue(jsonFeed, new TypeReference<>() {});
