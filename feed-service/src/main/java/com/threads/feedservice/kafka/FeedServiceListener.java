@@ -39,6 +39,11 @@ public class FeedServiceListener {
         service.handlePostDeleteEvent(postId);
     }
 
+    @KafkaListener(topics = "delete-repost-events", groupId = "feed-service")
+    public void consumeRepostDelete(Long postId) {
+        service.handleRepostDeleteEvent(postId);
+    }
+
     @KafkaListener(topics = "archive-post-events", groupId = "feed-service")
     public void consumePostArchive(Long postId) {
         service.handlePostArchiveEvent(postId);

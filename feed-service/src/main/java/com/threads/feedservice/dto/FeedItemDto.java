@@ -20,6 +20,7 @@ public class FeedItemDto {
     private LocalDateTime createdAt;
 
     private Boolean isRepost;
+    private Long originalPostId;
     private Long repostedByUserId;
     private String repostedByUsername;
 

@@ -1,5 +1,6 @@
 package com.threads.postservice.service;
 
+import com.threads.postservice.dto.PageDto;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
@@ -26,6 +27,7 @@ public interface PostService {
     List<PostResponse> getUserReplies(Long authorId, String authorizationHeader);
     List<PostResponse> getMyPosts(String authorizationHeader);
     List<PostResponse> getMyReplies(String authorizationHeader);
+    PageDto<PostResponse> getPostByTopic(String topic, int page);
     void deletePost(Long id, String authorizationHeader);
     void archivePost(Long id, String authorizationHeader);
     List<PostResponse> getArchivedPosts(String authorizationHeader);

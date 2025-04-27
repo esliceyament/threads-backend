@@ -1,6 +1,8 @@
 package com.threads.postservice.repository;
 
 import com.threads.postservice.entity.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -14,4 +16,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findByAuthorIdAndIsPostTrueAndHiddenFalseOrderByCreatedAtDesc(Long authorId);
     List<Post> findByAuthorIdAndIsReplyTrueAndHiddenFalseOrderByCreatedAtDesc(Long authorId);
     List<Post> findByAuthorIdAndIsPostTrueAndHiddenTrue(Long authorId);
+    Page<Post> findByTopicAndHiddenFalse(String content, Pageable pageable);
 }

@@ -73,7 +73,7 @@ public class UserProfileService {
         Set<Follow> followList = user.getFollowers();
         UserFeedDto userFeedDto = new UserFeedDto();
         userFeedDto.setUsername(user.getUsername());
-        userFeedDto.setFollowers(followList.stream().map(follow -> follow.getFollowing().getId()).toList());
+        userFeedDto.setFollowers(followList.stream().map(follow -> follow.getFollower().getId()).toList());
         return userFeedDto;
     }
 

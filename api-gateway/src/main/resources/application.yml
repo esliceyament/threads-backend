@@ -22,6 +22,11 @@ spring:
           predicates:
             - Path=/posts/**, /likes/**, /share/**, /report/**, /repost/**, /save/**
 
+        - id: feed-service
+          uri: lb://FEED-SERVICE
+          predicates:
+            - Path=/feed/**
+
 my:
   secret:
     key: bGVkZHV0eWJlbGx1bnVzdWFsbWluZWFsb3VkZmV3ZXJzbG93dGVsZXZpc2lvbmdlbmU=

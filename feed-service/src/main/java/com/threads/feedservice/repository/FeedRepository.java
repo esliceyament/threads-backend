@@ -11,5 +11,7 @@ public interface FeedRepository extends JpaRepository<FeedItem, Long> {
     Page<FeedItem> findAllByUserIdAndIsVisibleTrue(Long userId, Pageable pageable);
     List<FeedItem> findByPostId(Long postId);
     List<FeedItem> findByAuthorId(Long authorId);
+    List<FeedItem> findByOriginalPostId(Long postId);
     void deleteAllByPostId(Long postId);
+    void deleteAllByOriginalPostId(Long postId);
 }

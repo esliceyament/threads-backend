@@ -47,6 +47,7 @@ public class PostAccessGuard {
         accessRequest.setOwnerId(authorId);
         userFeignClient.checkAccessToProfile(accessRequest);
     }
+
     public void checkCanSendPost(Long viewerId, Long authorId) {
         AccessRequest accessRequest = new AccessRequest();
         accessRequest.setCurrentUserId(viewerId);

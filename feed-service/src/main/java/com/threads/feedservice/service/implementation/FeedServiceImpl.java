@@ -9,6 +9,7 @@ import com.threads.feedservice.dto.PageDto;
 import com.threads.feedservice.dto.UserDto;
 import com.threads.feedservice.entity.FeedItem;
 import com.threads.feedservice.feign.SecurityFeignClient;
+import com.threads.feedservice.feign.UserFeignClient;
 import com.threads.feedservice.mapper.FeedMapper;
 import com.threads.feedservice.repository.FeedRepository;
 import com.threads.feedservice.service.FeedService;
@@ -28,6 +29,7 @@ import java.util.List;
 public class FeedServiceImpl implements FeedService {
     private final FeedRepository repository;
     private final SecurityFeignClient securityFeignClient;
+    private final UserFeignClient userFeignClient;
     private final FeedMapper mapper;
     private final FeedCacheService cacheService;
 
@@ -43,7 +45,7 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page) {
-        Pageable pageable = PageRequest.of(page, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page - 1, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrue(currentUserId, pageable);
         List<FeedItemDto> content = feedPage.stream()
                 .map(mapper::toDto).toList();
@@ -51,10 +53,15 @@ public class FeedServiceImpl implements FeedService {
     }
 
     public void handleCreatePostEvent(CreatePostEvent event) {
-        UserDto userDto = securityFeignClient.getProfile(event.getAuthorId());
+        UserDto userDto;
+        if (event.getIsRepost()) {
+            userDto = userFeignClient.getProfile(event.getRepostedByUserId());
+        } else {
+            userDto = userFeignClient.getProfile(event.getAuthorId());
+        }
         String repostOwnerUsername = null;
         if (event.getIsRepost()) {
-            UserDto repostOwner = securityFeignClient.getProfile(event.getRepostedByUserId());
+            UserDto repostOwner = userFeignClient.getProfile(event.getRepostedByUserId());
             repostOwnerUsername = repostOwner.getUsername();
         }
         final String finalRepostOwnerUsername = repostOwnerUsername;
@@ -69,6 +76,7 @@ public class FeedServiceImpl implements FeedService {
                     feedItem.setTopic(event.getTopic());
                     feedItem.setCreatedAt(event.getCreatedAt());
                     feedItem.setIsRepost(event.getIsRepost());
+                    feedItem.setOriginalPostId(event.getOriginalPostId());
                     feedItem.setRepostedByUserId(event.getRepostedByUserId());
                     feedItem.setRepostedByUsername(finalRepostOwnerUsername);
                     feedItem.setMediaUrls(event.getMediaUrls());
@@ -129,10 +137,18 @@ public class FeedServiceImpl implements FeedService {
         repository.deleteAllByPostId(postId);
     }
 
+    @Transactional
+    public void handleRepostDeleteEvent(Long postId) {
+        repository.deleteAllByOriginalPostId(postId);
+    }
+
     public void handlePostArchiveEvent(Long postId) {
         List<FeedItem> feedItems = repository.findByPostId(postId);
+        List<FeedItem> feedItemReposts = repository.findByOriginalPostId(postId);
         feedItems.forEach(feed -> feed.setIsVisible(false));
+        feedItemReposts.forEach(feed -> feed.setIsVisible(false));
         repository.saveAll(feedItems);
+        repository.saveAll(feedItemReposts);
     }
     public void handlePostUnarchiveEvent(Long postId) {
         List<FeedItem> feedItems = repository.findByPostId(postId);

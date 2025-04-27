@@ -81,6 +81,7 @@ public class RepostServiceImpl implements RepostService {
         PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
                 originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
         producer.sendPostStatusEvent(postStatusEvent);
+        producer.sendPostDeleteEvent(repostId);
     }
 
     @Override

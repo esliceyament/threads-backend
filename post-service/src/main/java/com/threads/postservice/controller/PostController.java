@@ -1,5 +1,6 @@
 package com.threads.postservice.controller;
 
+import com.threads.postservice.dto.PageDto;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
@@ -90,6 +91,12 @@ public class PostController {
     @GetMapping("/get-replies")
     public ResponseEntity<List<PostResponse>> getMyReplies(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader) {
         return ResponseEntity.ok(postService.getMyReplies(authorizationHeader));
+    }
+
+    @GetMapping("/search-by-topic")
+    public ResponseEntity<PageDto<PostResponse>> getPostByTopic(@RequestParam String topic,
+                                                                @RequestParam(value = "page", defaultValue = "1") int page) {
+        return ResponseEntity.ok(postService.getPostByTopic(topic, page));
     }
 
     @DeleteMapping("/delete-post/{id}")

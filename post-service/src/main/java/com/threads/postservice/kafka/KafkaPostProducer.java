@@ -18,6 +18,7 @@ public class KafkaPostProducer {
     private final KafkaTemplate<String, Long> postDeleteKafkaTemplate;
     private final KafkaTemplate<String, Long> postArchiveKafkaTemplate;
     private final KafkaTemplate<String, Long> postUnarchiveKafkaTemplate;
+    private final KafkaTemplate<String, Long> repostDeleteKafkaTemplate;
 
     public void sendPinPostEvent(PinPostEvent pinPostEvent) {
         kafkaTemplate.send("user-post-events", pinPostEvent);
@@ -42,7 +43,12 @@ public class KafkaPostProducer {
     public void sendPostArchiveEvent(Long postId) {
         postArchiveKafkaTemplate.send("archive-post-events", postId);
     }
+
     public void sendPostUnarchiveEvent(Long postId) {
         postUnarchiveKafkaTemplate.send("unarchive-post-events", postId);
+    }
+
+    public void sendRepostDeleteEvent(Long postId) {
+        repostDeleteKafkaTemplate.send("delete-repost-events", postId);
     }
 }

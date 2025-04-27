@@ -4,6 +4,7 @@ import com.threads.PinPostEvent;
 import com.threads.events.CreatePostEvent;
 import com.threads.events.PostStatusEvent;
 import com.threads.events.UpdatePostEvent;
+import com.threads.postservice.dto.PageDto;
 import com.threads.postservice.dto.PostDto;
 import com.threads.postservice.dto.PostUpdateDto;
 import com.threads.postservice.dto.ReplyUpdateDto;
@@ -24,6 +25,10 @@ import com.threads.postservice.repository.*;
 import com.threads.postservice.response.PostResponse;
 import com.threads.postservice.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -221,6 +226,16 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public PageDto<PostResponse> getPostByTopic(String topic, int page) {
+        Pageable pageable = PageRequest.of(page - 1, 15, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Post> postPage = postRepository.findByTopicAndHiddenFalse(topic, pageable);
+        List<PostResponse> postResponses = postPage.stream()
+                .map(mapper::toResponse)
+                .toList();
+        return new PageDto<>(page, 15, postPage.getTotalElements(), postPage.getTotalPages(), postResponses);
+    }
+
+    @Override
     @Transactional
     public void deletePost(Long id, String authorizationHeader) {
         Post post = postRepository.findById(id)
@@ -244,6 +259,7 @@ public class PostServiceImpl implements PostService {
         reportRepository.deleteByTargetId(post.getId());
         postRepository.delete(post);
         producer.sendPostDeleteEvent(post.getId());
+        producer.sendRepostDeleteEvent(post.getId());
     }
 
     protected void deleteReply(Post reply, Long currentUserId) {
@@ -263,6 +279,7 @@ public class PostServiceImpl implements PostService {
             PostStatusEvent postStatusEvent = new PostStatusEvent(originalPost.getId(), originalPost.getLikeCount(),
                     originalPost.getRepostCount(), originalPost.getReplyCount(), originalPost.getSendCount());
             producer.sendPostStatusEvent(postStatusEvent);
+            producer.sendRepostDeleteEvent(reply.getId());
         }
         else {
             if (accessGuard.checkOwnershipToDelete(reply, currentUserId)) {
@@ -475,7 +492,6 @@ public class PostServiceImpl implements PostService {
         createPostEvent.setRepostCount(post.getRepostCount());
         createPostEvent.setReplyCount(post.getReplyCount());
         createPostEvent.setSendCount(post.getSendCount());
-        producer.sendCreatePostEvent(createPostEvent);
         return createPostEvent;
     }
 }
