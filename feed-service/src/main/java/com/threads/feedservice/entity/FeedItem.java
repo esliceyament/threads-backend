@@ -31,6 +31,7 @@ public class FeedItem {
     private String topic;
 
     private LocalDateTime createdAt;
+    private LocalDateTime feedCreatedAt;
 
     private Boolean isRepost;
     private Long originalPostId;

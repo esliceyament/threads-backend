@@ -59,7 +59,7 @@ public class FeedServiceImpl implements FeedService {
 
     private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page) {
         Pageable pageable = PageRequest.of(page - 1, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrue(currentUserId, pageable);
+        Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrueOrderByFeedCreatedAtDesc(currentUserId, pageable); //proverit order by
         List<FeedItemDto> content = feedPage.stream()
                 .map(mapper::toDto).toList();
         return new PageDto<>(page, 20, feedPage.getTotalElements(), feedPage.getTotalPages(), content);
@@ -88,6 +88,7 @@ public class FeedServiceImpl implements FeedService {
                     feedItem.setContent(event.getContent());
                     feedItem.setTopic(event.getTopic());
                     feedItem.setCreatedAt(event.getCreatedAt());
+                    feedItem.setFeedCreatedAt(LocalDateTime.now());
                     feedItem.setIsRepost(event.getIsRepost());
                     feedItem.setOriginalPostId(event.getOriginalPostId());
                     feedItem.setRepostedByUserId(event.getRepostedByUserId());
