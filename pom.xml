@@ -15,8 +15,6 @@
         <module>post-service</module>
         <module>feed-service</module>
         <module>notification-service</module>
-        <module>search-service</module>
-        <module>admin-service</module>
         <module>service-discovery</module>
         <module>common-library</module>
     </modules>

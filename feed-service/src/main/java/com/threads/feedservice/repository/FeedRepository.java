@@ -15,6 +15,7 @@ public interface FeedRepository extends JpaRepository<FeedItem, Long> {
     List<FeedItem> findByOriginalPostId(Long postId);
     void deleteAllByPostId(Long postId);
     void deleteAllByOriginalPostId(Long postId);
+    void deleteAllByFeedCreatedAtBefore(LocalDateTime time);
     List<FeedItem> getFeedItemsByCreatedAtAfter(LocalDateTime time);
     Page<FeedItem> findByCreatedAtAfterOrderByTrendScoreDesc(LocalDateTime after, Pageable pageable);
 }

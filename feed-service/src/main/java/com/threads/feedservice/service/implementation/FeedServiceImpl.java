@@ -170,6 +170,29 @@ public class FeedServiceImpl implements FeedService {
         repository.saveAll(feedItems);
     }
 
+    public void handleNewFollowPostEvent(List<CreatePostEvent> events) {
+        List<FeedItem> posts = events.stream().map(post -> {
+            FeedItem feedItem = new FeedItem();
+            feedItem.setUserId(post.getUserId());
+            feedItem.setPostId(post.getPostId());
+            feedItem.setAuthorId(post.getAuthorId());
+            feedItem.setAuthorUsername(post.getAuthorUsername());
+            feedItem.setContent(post.getContent());
+            feedItem.setTopic(post.getTopic());
+            feedItem.setCreatedAt(post.getCreatedAt());
+            feedItem.setFeedCreatedAt(LocalDateTime.now());
+            feedItem.setIsRepost(post.getIsRepost());
+            feedItem.setMediaUrls(post.getMediaUrls());
+            feedItem.setIsVisible(true);
+            feedItem.setLikeCount(post.getLikeCount());
+            feedItem.setRepostCount(post.getRepostCount());
+            feedItem.setReplyCount(post.getReplyCount());
+            feedItem.setSendCount(post.getSendCount());
+            return feedItem;
+        }).toList();
+        repository.saveAll(posts);
+    }
+
     private Long getUserId(String authorizationHeader) {
         return securityFeignClient.getUserId(authorizationHeader);
     }

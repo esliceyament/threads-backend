@@ -10,7 +10,6 @@
         <module name="auth-service" />
         <module name="post-service" />
         <module name="feed-service" />
-        <module name="search-service" />
         <module name="api-gateway" />
         <module name="user-service" />
         <module name="common-library" />
@@ -21,6 +20,7 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="media-service" target="17" />
+      <module name="search-service" target="17" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">

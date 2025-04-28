@@ -38,6 +38,12 @@ public class TrendingPostsScheduler {
         cacheService.cacheTrending(feedItemDtoList);
     }
 
+    @Scheduled(fixedRate = 10 * 24 * 3600 * 1000)
+    public void removeOldFeeds() {
+        LocalDateTime ten_days = LocalDateTime.now().minusDays(10);
+        feedRepository.deleteAllByFeedCreatedAtBefore(ten_days);
+    }
+
     private int calculateScore(FeedItem feed) {
         return feed.getLikeCount() + feed.getSendCount() * 2 + feed.getReplyCount() * 2 + feed.getRepostCount() * 3;
     }

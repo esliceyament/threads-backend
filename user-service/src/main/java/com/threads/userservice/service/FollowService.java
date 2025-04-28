@@ -1,5 +1,6 @@
 package com.threads.userservice.service;
 
+import com.threads.events.NewFollowEvent;
 import com.threads.userservice.dto.UserProfileDto;
 import com.threads.userservice.entity.Follow;
 import com.threads.userservice.entity.UserProfile;
@@ -8,6 +9,7 @@ import com.threads.userservice.exception.AlreadyFollowingException;
 import com.threads.userservice.exception.InvalidFollowRequestException;
 import com.threads.userservice.exception.NotFoundException;
 import com.threads.userservice.feign.SecurityFeignClient;
+import com.threads.userservice.kafka.KafkaUserProducer;
 import com.threads.userservice.mapper.UserProfileMapper;
 import com.threads.userservice.repository.FollowRepository;
 import com.threads.userservice.repository.UserProfileRepository;
@@ -25,6 +27,7 @@ public class FollowService {
     private final SecurityFeignClient securityFeignClient;
     private final UserProfileMapper mapper;
     private final AccessGuard accessGuard;
+    private final KafkaUserProducer producer;
 
     public void followUser(String authorizationHeader, Long targetId) {
         if (getUserId(authorizationHeader).equals(targetId)) {
@@ -46,6 +49,9 @@ public class FollowService {
         follow.setFollowing(targetUser);
 
         followRepository.save(follow);
+
+        NewFollowEvent newFollowEvent = new NewFollowEvent(currentUser.getId(), targetId, targetUser.getUsername());
+        producer.sendNewFollowEvent(newFollowEvent);
     }
 
     public void unfollowUser(String authorizationHeader, Long targetId) {
