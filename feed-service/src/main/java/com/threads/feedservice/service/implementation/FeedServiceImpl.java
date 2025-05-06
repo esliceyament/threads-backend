@@ -23,7 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -49,17 +52,18 @@ public class FeedServiceImpl implements FeedService {
         if (cacheService.getCachedTrending() != null) {
             return cacheService.getCachedTrending();
         }
+        Map<Long, FeedItem> itemMap = new LinkedHashMap<>();
         LocalDateTime time = LocalDateTime.now().minusHours(24);
         Pageable pageable = PageRequest.of(0, 100);
-        Page<FeedItem> feedItems = repository.findByCreatedAtAfterOrderByTrendScoreDesc(time, pageable);
-        List<FeedItemDto> feedItemDtoList = feedItems.stream()
-                .map(mapper::toDto).toList();
+        Page<FeedItem> feedItems = repository.findWithMediaUrlsByCreatedAtAfterOrderByTrendScoreDesc(time, pageable);
+        feedItems.forEach(item -> itemMap.put(item.getPostId(), item));
+        List<FeedItemDto> feedItemDtoList = new ArrayList<>(itemMap.values()).stream().map(mapper::toDto).toList();
         return new PageDto<>(0, 100, feedItems.getTotalElements(), feedItems.getTotalPages(), feedItemDtoList);
     }
 
     private PageDto<FeedItemDto> getUserFeedOrCache(Long currentUserId, int page) {
         Pageable pageable = PageRequest.of(page - 1, 20, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrueOrderByFeedCreatedAtDesc(currentUserId, pageable); //proverit order by
+        Page<FeedItem> feedPage = repository.findAllByUserIdAndIsVisibleTrueOrderByFeedCreatedAtDesc(currentUserId, pageable);
         List<FeedItemDto> content = feedPage.stream()
                 .map(mapper::toDto).toList();
         return new PageDto<>(page, 20, feedPage.getTotalElements(), feedPage.getTotalPages(), content);
@@ -170,27 +174,25 @@ public class FeedServiceImpl implements FeedService {
         repository.saveAll(feedItems);
     }
 
-    public void handleNewFollowPostEvent(List<CreatePostEvent> events) {
-        List<FeedItem> posts = events.stream().map(post -> {
-            FeedItem feedItem = new FeedItem();
-            feedItem.setUserId(post.getUserId());
-            feedItem.setPostId(post.getPostId());
-            feedItem.setAuthorId(post.getAuthorId());
-            feedItem.setAuthorUsername(post.getAuthorUsername());
-            feedItem.setContent(post.getContent());
-            feedItem.setTopic(post.getTopic());
-            feedItem.setCreatedAt(post.getCreatedAt());
-            feedItem.setFeedCreatedAt(LocalDateTime.now());
-            feedItem.setIsRepost(post.getIsRepost());
-            feedItem.setMediaUrls(post.getMediaUrls());
-            feedItem.setIsVisible(true);
-            feedItem.setLikeCount(post.getLikeCount());
-            feedItem.setRepostCount(post.getRepostCount());
-            feedItem.setReplyCount(post.getReplyCount());
-            feedItem.setSendCount(post.getSendCount());
-            return feedItem;
-        }).toList();
-        repository.saveAll(posts);
+    public void handleNewFollowPostEvent(CreatePostEvent event) {
+        FeedItem feedItem = new FeedItem();
+        feedItem.setUserId(event.getUserId());
+        feedItem.setPostId(event.getPostId());
+        feedItem.setAuthorId(event.getAuthorId());
+        feedItem.setAuthorUsername(event.getAuthorUsername());
+        feedItem.setContent(event.getContent());
+        feedItem.setTopic(event.getTopic());
+        feedItem.setCreatedAt(event.getCreatedAt());
+        feedItem.setFeedCreatedAt(LocalDateTime.now());
+        feedItem.setIsRepost(event.getIsRepost());
+        feedItem.setMediaUrls(event.getMediaUrls());
+        feedItem.setIsVisible(true);
+        feedItem.setLikeCount(event.getLikeCount());
+        feedItem.setRepostCount(event.getRepostCount());
+        feedItem.setReplyCount(event.getReplyCount());
+        feedItem.setSendCount(event.getSendCount());
+        repository.save(feedItem);
+        cacheService.evictFeed(event.getUserId(), 1);
     }
 
     private Long getUserId(String authorizationHeader) {

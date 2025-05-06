@@ -8,14 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 public class KafkaPostProducer {
     private final KafkaTemplate<String, PinPostEvent> kafkaTemplate;
     private final KafkaTemplate<String, CreatePostEvent> createPostKafkaTemplate;
-    private final KafkaTemplate<String, List<CreatePostEvent>> createListPostKafkaTemplate;
+    private final KafkaTemplate<String, CreatePostEvent> createListPostKafkaTemplate;
     private final KafkaTemplate<String, UpdatePostEvent> updatePostKafkaTemplate;
     private final KafkaTemplate<String, PostStatusEvent> postStatusKafkaTemplate;
     private final KafkaTemplate<String, Long> postDeleteKafkaTemplate;
@@ -55,5 +53,7 @@ public class KafkaPostProducer {
         repostDeleteKafkaTemplate.send("delete-repost-events", postId);
     }
 
-    public void sendNewFollowPostEvent(List<CreatePostEvent> createPostEvents) {createListPostKafkaTemplate.send("new-follow-post-events", createPostEvents);}
+    public void sendNewFollowPostEvent(CreatePostEvent createPostEvents) {
+        createListPostKafkaTemplate.send("new-follow-post-events", createPostEvents);
+    }
 }

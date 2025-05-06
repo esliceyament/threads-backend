@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,8 +19,7 @@ public class KafkaPostListener {
 
     @KafkaListener(topics = "new-follow-events", groupId = "post-service")
     public void handleNewFollowEvent(NewFollowEvent newFollowEvent) {
-        List<Post> posts = postRepository.findRecent3Posts(newFollowEvent.getFollowingId());
-        List<CreatePostEvent> events = new ArrayList<>();
+        List<Post> posts = postRepository.findTop3ByAuthorIdAndIsPostTrueAndHiddenFalseOrderByCreatedAtDesc(newFollowEvent.getFollowingId());
         posts.forEach(post -> {
             CreatePostEvent createPostEvent = new CreatePostEvent();
             createPostEvent.setUserId(newFollowEvent.getFollowerId());
@@ -41,8 +39,7 @@ public class KafkaPostListener {
                         .map(PostMedia::getMediaUrl).toList();
                 createPostEvent.setMediaUrls(mediaUrls);
             }
-            events.add(createPostEvent);
+            producer.sendNewFollowPostEvent(createPostEvent);
         });
-        producer.sendNewFollowPostEvent(events);
     }
 }

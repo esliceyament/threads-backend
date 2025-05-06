@@ -1,5 +1,7 @@
 package com.threads.feedservice.controller;
 
+import com.threads.feedservice.dto.FeedItemDto;
+import com.threads.feedservice.dto.PageDto;
 import com.threads.feedservice.service.implementation.FeedServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -16,5 +18,10 @@ public class FeedController {
     public ResponseEntity<?> getUserFeed(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader,
                                          @RequestParam(value = "page", defaultValue = "1") int page) {
         return ResponseEntity.ok(service.getUserFeed(authorizationHeader, page));
+    }
+
+    @GetMapping("/trending")
+    public PageDto<FeedItemDto> getTrending() {
+        return service.getTrending();
     }
 }

@@ -13,12 +13,12 @@
         <module name="api-gateway" />
         <module name="user-service" />
         <module name="common-library" />
-        <module name="admin-service" />
         <module name="notification-service" />
         <module name="service-discovery" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="admin-service" target="17" />
       <module name="media-service" target="17" />
       <module name="search-service" target="17" />
     </bytecodeTargetLevel>
