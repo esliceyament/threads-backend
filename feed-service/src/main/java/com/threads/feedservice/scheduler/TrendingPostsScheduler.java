@@ -1,11 +1,11 @@
-package com.threads.feedservice.service.scheduler;
+package com.threads.feedservice.scheduler;
 
 import com.threads.feedservice.dto.FeedItemDto;
 import com.threads.feedservice.dto.PageDto;
 import com.threads.feedservice.entity.FeedItem;
 import com.threads.feedservice.mapper.FeedMapper;
 import com.threads.feedservice.repository.FeedRepository;
-import com.threads.feedservice.service.cache.FeedCacheService;
+import com.threads.feedservice.cache.FeedCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

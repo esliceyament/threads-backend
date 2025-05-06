@@ -1,4 +1,4 @@
-package com.threads.feedservice.service.cache;
+package com.threads.feedservice.cache;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;

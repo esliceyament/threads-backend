@@ -13,7 +13,7 @@ import com.threads.feedservice.feign.UserFeignClient;
 import com.threads.feedservice.mapper.FeedMapper;
 import com.threads.feedservice.repository.FeedRepository;
 import com.threads.feedservice.service.FeedService;
-import com.threads.feedservice.service.cache.FeedCacheService;
+import com.threads.feedservice.cache.FeedCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
